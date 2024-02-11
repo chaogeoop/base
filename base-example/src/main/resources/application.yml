@@ -1,0 +1,22 @@
+logging:
+  level:
+    org.springframework.data.mongodb.core.MongoTemplate: DEBUG
+spring:
+  application:
+    name: base-example
+mongodb:
+  main:
+    connectUrl: mongodb://main:123456@127.0.0.1:27771,127.0.0.1:27772/main
+redis:
+  host: 127.0.0.1
+  port: 6379
+  password: 123456
+rabbitmq:
+  hosts: 127.0.0.1:5672
+  task:
+    username: main
+    password: 123456
+    vhost: /teach
+elasticsearch:
+  jest:
+    uris: http://127.0.0.1:19200/
