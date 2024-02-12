@@ -698,7 +698,6 @@ public class CommonCountProvider {
 
             if (CacheStateEnum.NO_CACHE.equals(this.cacheState)) {
                 if (this.inc != 0) {
-                    assert this.commonCountDateLog != null;
                     this.commonCountDateLog.setTotal(this.commonCountDateLog.getTotal() + this.inc);
                     this.commonCountTotal.setTotal(this.commonCountTotal.getTotal() + this.inc);
                     this.afterAllTotal += this.inc;
@@ -728,7 +727,6 @@ public class CommonCountProvider {
             this.commonCountDateLog.setTotal(this.beforeLatestCacheTotal);
             this.afterAllTotal += this.beforeLatestCacheTotal;
 
-            persistEntity.getDatabase().save(this.commonCountDateLog);
             persistEntity.getDatabase().save(this.commonCountTotal);
             persistEntity.getCacheList().add(this.getDeleteDateCountCache());
             persistEntity.getCacheList().add(this.getDeleteCommonCountTotalCache());
