@@ -637,9 +637,8 @@ public class CommonCountProvider {
         private CommonCountDateLog commonCountDateLog;
 
         private String beforeLatestCacheDate;
-        private long beforeLatestCacheTotal = 0;
+        private Long beforeLatestCacheTotal;
         private String nextCacheDate;
-        private long nextCacheTotal = 0;
         private CacheStateEnum cacheState;
 
         private long afterAllTotal = 0;
@@ -686,13 +685,57 @@ public class CommonCountProvider {
         }
 
         private void collectNeedPersist(MongoPersistEntity.PersistEntity persistEntity) {
-            if (this.commonCountDateLog != null && this.commonCountDateLog.getId() == null) {
+            this.afterAllTotal = this.commonCountTotal.getTotal();
+
+            if (CacheStateEnum.STAY.equals(this.cacheState)) {
+                persistEntity.getCacheList().add(this.getIncCache());
+                return;
+            }
+
+            if (this.commonCountDateLog.getId() == null) {
                 persistEntity.getDatabase().insert(this.commonCountDateLog);
             }
 
-            this.afterAllTotal = this.commonCountTotal.getTotal();
+            if (CacheStateEnum.NO_CACHE.equals(this.cacheState)) {
+                if (this.inc != 0) {
+                    assert this.commonCountDateLog != null;
+                    this.commonCountDateLog.setTotal(this.commonCountDateLog.getTotal() + this.inc);
+                    this.commonCountTotal.setTotal(this.commonCountTotal.getTotal() + this.inc);
+                    this.afterAllTotal += this.inc;
+                    this.afterAllTotal += this.beforeLatestCacheTotal;
 
-            MongoPersistEntity.CacheInterface deleteTotalCache = new MongoPersistEntity.CacheInterface() {
+                    persistEntity.getDatabase().save(this.commonCountDateLog);
+                    persistEntity.getDatabase().save(this.commonCountTotal);
+                    persistEntity.getCacheList().add(this.getDeleteCommonCountTotalCache());
+                }
+
+                return;
+            }
+
+            if (this.inc == 0) {
+                if (!Objects.equal(this.commonCountTotal.getDataIsCold(), true)) {
+                    this.commonCountTotal.setDataIsCold(true);
+                }
+            } else {
+                if (Objects.equal(this.commonCountTotal.getDataIsCold(), true)) {
+                    this.commonCountTotal.setDataIsCold(false);
+                }
+                persistEntity.getCacheList().add(this.getIncCache());
+            }
+
+            this.commonCountTotal.setLatestCacheDate(this.nextCacheDate);
+            this.commonCountTotal.setTotal(this.commonCountTotal.getTotal() + this.beforeLatestCacheTotal);
+            this.commonCountDateLog.setTotal(this.beforeLatestCacheTotal);
+            this.afterAllTotal += this.beforeLatestCacheTotal;
+
+            persistEntity.getDatabase().save(this.commonCountDateLog);
+            persistEntity.getDatabase().save(this.commonCountTotal);
+            persistEntity.getCacheList().add(this.getDeleteDateCountCache());
+            persistEntity.getCacheList().add(this.getDeleteCommonCountTotalCache());
+        }
+
+        private MongoPersistEntity.CacheInterface getDeleteCommonCountTotalCache() {
+            return new MongoPersistEntity.CacheInterface() {
                 @Override
                 public void persist() {
                     redisAbout.getRedisProvider().delete(
@@ -705,24 +748,10 @@ public class CommonCountProvider {
 
                 }
             };
+        }
 
-            if (CacheStateEnum.NO_CACHE.equals(this.cacheState)) {
-                if (this.inc != 0) {
-                    assert this.commonCountDateLog != null;
-                    this.commonCountDateLog.setTotal(this.commonCountDateLog.getTotal() + this.inc);
-                    this.commonCountTotal.setTotal(this.commonCountTotal.getTotal() + this.inc);
-                    this.afterAllTotal += this.inc;
-                    this.afterAllTotal += this.beforeLatestCacheTotal;
-
-                    persistEntity.getDatabase().save(this.commonCountDateLog);
-                    persistEntity.getDatabase().save(this.commonCountTotal);
-                    persistEntity.getCacheList().add(deleteTotalCache);
-                }
-
-                return;
-            }
-
-            MongoPersistEntity.CacheInterface incCache = new MongoPersistEntity.CacheInterface() {
+        private MongoPersistEntity.CacheInterface getIncCache() {
+            return new MongoPersistEntity.CacheInterface() {
                 private final DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity = DistributedKeyProvider.KeyEntity.of(
                         redisAbout.getCountBizDateCacheKeyType(),
                         JsonHelper.writeValueAsString(biz.convertToBizDate(nextCacheDate))
@@ -730,20 +759,22 @@ public class CommonCountProvider {
 
                 @Override
                 public void persist() {
-                    long cacheTotal = redisAbout.getRedisProvider().incrBy(keyEntity, nextCacheTotal);
+                    long cacheTotal = redisAbout.getRedisProvider().incrBy(keyEntity, inc);
 
                     afterAllTotal += cacheTotal;
                 }
 
                 @Override
                 public void rollback() {
-                    redisAbout.getRedisProvider().incrBy(keyEntity, nextCacheTotal * -1);
+                    redisAbout.getRedisProvider().incrBy(keyEntity, inc * -1);
 
-                    afterAllTotal -= nextCacheTotal;
+                    afterAllTotal -= inc;
                 }
             };
+        }
 
-            MongoPersistEntity.CacheInterface deleteCache = new MongoPersistEntity.CacheInterface() {
+        private MongoPersistEntity.CacheInterface getDeleteDateCountCache() {
+            return new MongoPersistEntity.CacheInterface() {
                 private final DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity = DistributedKeyProvider.KeyEntity.of(
                         redisAbout.getCountBizDateCacheKeyType(),
                         JsonHelper.writeValueAsString(biz.convertToBizDate(beforeLatestCacheDate))
@@ -759,34 +790,6 @@ public class CommonCountProvider {
                     redisAbout.getRedisProvider().set(keyEntity, RedisProvider.AcceptType.of(beforeLatestCacheTotal));
                 }
             };
-
-            if (this.inc != 0) {
-                persistEntity.getCacheList().add(incCache);
-            }
-
-            if (CacheStateEnum.STAY.equals(this.cacheState)) {
-                return;
-            }
-
-            if (this.inc == 0) {
-                if (!Objects.equal(this.commonCountTotal.getDataIsCold(), true)) {
-                    this.commonCountTotal.setDataIsCold(true);
-                }
-            } else {
-                if (Objects.equal(this.commonCountTotal.getDataIsCold(), true)) {
-                    this.commonCountTotal.setDataIsCold(false);
-                }
-            }
-
-            this.commonCountTotal.setLatestCacheDate(this.nextCacheDate);
-            this.commonCountTotal.setTotal(this.commonCountTotal.getTotal() + this.beforeLatestCacheTotal);
-            this.commonCountDateLog.setTotal(this.beforeLatestCacheTotal);
-            this.afterAllTotal += this.beforeLatestCacheTotal;
-
-            persistEntity.getDatabase().save(this.commonCountDateLog);
-            persistEntity.getDatabase().save(this.commonCountTotal);
-            persistEntity.getCacheList().add(deleteTotalCache);
-            persistEntity.getCacheList().add(deleteCache);
         }
 
         private void setCommonCountTotal() {
@@ -863,7 +866,6 @@ public class CommonCountProvider {
             }
 
             this.nextCacheDate = this.bizDate.getDate();
-            this.nextCacheTotal = this.inc;
             //代表日志的日期等于上次缓存日期
             if (CacheStateEnum.STAY.equals(this.cacheState)) {
                 return;
@@ -918,7 +920,6 @@ public class CommonCountProvider {
             }
 
             this.nextCacheDate = this.bizDate.getDate();
-            this.nextCacheTotal = this.inc;
             //代表日志的日期等于上次缓存日期
             if (CacheStateEnum.STAY.equals(this.cacheState)) {
                 return;
