@@ -696,12 +696,13 @@ public class CommonCountProvider {
                 persistEntity.getDatabase().insert(this.commonCountDateLog);
             }
 
+            this.afterAllTotal += this.beforeLatestCacheTotal;
+
             if (CacheStateEnum.NO_CACHE.equals(this.cacheState)) {
                 if (this.inc != 0) {
                     this.commonCountDateLog.setTotal(this.commonCountDateLog.getTotal() + this.inc);
                     this.commonCountTotal.setTotal(this.commonCountTotal.getTotal() + this.inc);
                     this.afterAllTotal += this.inc;
-                    this.afterAllTotal += this.beforeLatestCacheTotal;
 
                     persistEntity.getDatabase().save(this.commonCountDateLog);
                     persistEntity.getDatabase().save(this.commonCountTotal);
@@ -725,7 +726,6 @@ public class CommonCountProvider {
             this.commonCountTotal.setLatestCacheDate(this.nextCacheDate);
             this.commonCountTotal.setTotal(this.commonCountTotal.getTotal() + this.beforeLatestCacheTotal);
             this.commonCountDateLog.setTotal(this.beforeLatestCacheTotal);
-            this.afterAllTotal += this.beforeLatestCacheTotal;
 
             persistEntity.getDatabase().save(this.commonCountTotal);
             persistEntity.getCacheList().add(this.getDeleteDateCountCache());
