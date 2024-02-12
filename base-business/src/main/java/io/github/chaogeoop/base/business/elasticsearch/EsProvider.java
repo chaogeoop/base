@@ -80,7 +80,7 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
         map.put(ActionEnum.UPDATE, persistMap.getSaveMap());
         map.put(ActionEnum.DELETE, persistMap.getDeleteMap());
 
-        Set<EsUnitInfo> esUnitInfoSet = new HashSet<>();
+        Set<EsHelper.EsUnitInfo> esUnitInfoSet = new HashSet<>();
 
         for (Map.Entry<ActionEnum, MultiValueMap<MongoPersistEntity.ModelClazzCollectionName, BaseModel>> actionEntry : map.entrySet()) {
             for (Map.Entry<MongoPersistEntity.ModelClazzCollectionName, List<BaseModel>> entry : actionEntry.getValue().entrySet()) {
@@ -91,7 +91,7 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
                     continue;
                 }
 
-                EsUnitInfo esUnitInfo = EsUnitInfo.of((ISearch<? extends BaseEs>) entry.getValue().get(0), this.jestClient);
+                EsHelper.EsUnitInfo esUnitInfo = EsHelper.EsUnitInfo.of((ISearch<? extends BaseEs>) entry.getValue().get(0), this.jestClient);
                 esUnitInfoSet.add(esUnitInfo);
 
                 for (BaseModel obj : entry.getValue()) {
@@ -130,7 +130,7 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
         MongoPersistEntity.MessageInterface message = new MongoPersistEntity.MessageInterface() {
             @Override
             public void send() {
-                for (EsUnitInfo esUnit : esUnitInfoSet) {
+                for (EsHelper.EsUnitInfo esUnit : esUnitInfoSet) {
                     BaseEs.getAccordEsNameByData(jestClient, esUnit.getBaseEsName(), esUnit.getEsName(), esUnit.getMapping());
                 }
 
@@ -224,7 +224,7 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
             return ListPage.of(pageSplitter.getOffset(), pageSplitter.getLimit(), 0, new ArrayList<>());
         }
 
-        List<EsUnitInfo> esUnitInfos = CollectionHelper.map(judgeKeys, o -> EsUnitInfo.of(o, this.jestClient));
+        List<EsHelper.EsUnitInfo> esUnitInfos = CollectionHelper.map(judgeKeys, o -> EsHelper.EsUnitInfo.of(o, this.jestClient));
         Set<String> realEsNames = CollectionHelper.map(Sets.newHashSet(esUnitInfos),
                 o -> BaseEs.getAccordEsNameByData(this.jestClient, o.getBaseEsName(), o.getEsName(), o.getMapping())
         );
@@ -237,7 +237,7 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
             return 0;
         }
 
-        List<EsUnitInfo> esUnitInfos = CollectionHelper.map(judgeKeys, o -> EsUnitInfo.of(o, this.jestClient));
+        List<EsHelper.EsUnitInfo> esUnitInfos = CollectionHelper.map(judgeKeys, o -> EsHelper.EsUnitInfo.of(o, this.jestClient));
         Set<String> realEsNames = CollectionHelper.map(Sets.newHashSet(esUnitInfos),
                 o -> BaseEs.getAccordEsNameByData(this.jestClient, o.getBaseEsName(), o.getEsName(), o.getMapping())
         );
@@ -323,39 +323,6 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
             data.setUniqueId(log.getUniqueId());
 
             return data;
-        }
-    }
-
-    @Setter
-    @Getter
-    public static class EsUnitInfo {
-        private String baseEsName;
-
-        private String esName;
-
-        private String mapping;
-
-        public static <M extends ISearch<? extends BaseEs>> EsUnitInfo of(M judge, JestClient jestClient) {
-            EsUnitInfo data = new EsUnitInfo();
-
-            data.setBaseEsName(EsHelper.getBaseEsName(judge));
-            data.setEsName(EsHelper.getAccordEsName(judge));
-            data.setMapping(EsHelper.getMapping(judge, jestClient));
-
-            return data;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            EsUnitInfo esUnitInfo = (EsUnitInfo) o;
-            return Objects.equals(baseEsName, esUnitInfo.baseEsName) && Objects.equals(esName, esUnitInfo.esName);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(baseEsName, esName);
         }
     }
 

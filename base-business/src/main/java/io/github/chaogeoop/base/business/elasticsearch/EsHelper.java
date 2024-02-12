@@ -35,76 +35,18 @@ public class EsHelper {
     private static final Map<String, Map<String, String>> textKeywordField = Map.of("keyword", Map.of("type", "keyword"));
 
     public static <K extends ISearch<? extends BaseEs>> String getBaseEsName(K data) {
-        EsInfoEntity<K> entity = new EsInfoEntity<>(data);
+        Class<? extends BaseEs> esClazz = data.giveEsModel();
 
-        return entity.getBaseEsName();
-    }
-
-    public static <K extends ISearch<? extends BaseEs>> String getAccordEsName(K data) {
-        EsInfoEntity<K> entity = new EsInfoEntity<>(data);
-
-        return entity.getAccordEsName();
-    }
-
-    public static <K extends ISearch<? extends BaseEs>> String getMapping(K data, JestClient jestClient) {
-        EsInfoEntity<K> entity = new EsInfoEntity<>(data);
-
-        return entity.getMapping(jestClient);
-    }
-
-    private static class EsInfoEntity<K extends ISearch<? extends BaseEs>> {
-        private final K data;
-
-        EsInfoEntity(K data) {
-            this.data = data;
+        if (esClazz.isAnnotationPresent(EsTableName.class)) {
+            return esClazz.getAnnotation(EsTableName.class).value();
         }
 
-        public String getBaseEsName() {
-            Class<? extends BaseEs> esClazz = this.data.giveEsModel();
-
-            if (esClazz.isAnnotationPresent(EsTableName.class)) {
-                return esClazz.getAnnotation(EsTableName.class).value();
-            }
-
-            if (BaseModel.class.isAssignableFrom(this.data.getClass())) {
-                return BaseModel.getBaseCollectionNameByClazz((Class<? extends BaseModel>) this.data.getClass());
-            }
-
-            throw new BizException("数据非法");
+        if (BaseModel.class.isAssignableFrom(data.getClass())) {
+            return BaseModel.getBaseCollectionNameByClazz((Class<? extends BaseModel>) data.getClass());
         }
 
-        public String getAccordEsName() {
-            String baseEsName = this.getBaseEsName();
-
-            Class<? extends BaseEs> esClazz = this.data.giveEsModel();
-
-            if (esClazz.isAnnotationPresent(EsTableName.class)) {
-                return esClazz.getAnnotation(EsTableName.class).value();
-            }
-
-            if (!(this.data instanceof ISplitCollection)) {
-                return baseEsName;
-            }
-
-            String splitIndex = ((ISplitCollection) this.data).calSplitIndex();
-
-            return SplitCollectionHelper.combineNameWithSplitIndex(baseEsName, splitIndex);
-        }
-
-        public String getMapping(JestClient jestClient) {
-            String mapping = BaseEs.getMappingFromCache(jestClient, getBaseEsName());
-            if (mapping != null) {
-                return mapping;
-            }
-
-            mapping = JsonHelper.writeValueAsString(EsHelper.getMapping(this.data.giveEsModel()));
-
-            BaseEs.getAccordEsNameByData(jestClient, getBaseEsName(), getAccordEsName(), mapping);
-
-            return mapping;
-        }
+        throw new BizException("数据非法");
     }
-
 
     public static BoolQueryBuilder convert(Query query, TextAndNestedInfo textAndNestedInfo, boolean needBoost) {
         return convert(query.getQueryObject(), textAndNestedInfo, needBoost);
@@ -444,33 +386,6 @@ public class EsHelper {
         }
     }
 
-    @Setter
-    @Getter
-    public static class InitEsUnit {
-        private String baseEsName;
-
-        private Class<? extends BaseEs> esClazz;
-
-        private String mapping;
-
-        public static InitEsUnit of(Class<? extends ISearch<? extends BaseEs>> clazz) {
-            InitEsUnit result = new InitEsUnit();
-
-            ISearch<? extends BaseEs> data;
-            try {
-                data = clazz.getDeclaredConstructor().newInstance();
-            } catch (Exception e) {
-                throw new BizException("创建数据错误");
-            }
-
-            result.setBaseEsName(EsHelper.getBaseEsName(data));
-            result.setEsClazz(data.giveEsModel());
-            result.setMapping(JsonHelper.writeValueAsString(EsHelper.getMapping(data.giveEsModel())));
-
-            return result;
-        }
-    }
-
     public static class EsClazzEntity {
         private final Class<? extends BaseEs> clazz;
         private final FieldNode root;
@@ -792,6 +707,113 @@ public class EsHelper {
             searchInput.setWordSearchQueryBuilder(boolQueryBuilder);
 
             return searchInput;
+        }
+    }
+
+    private static class EsInfoEntity<K extends ISearch<? extends BaseEs>> {
+        private final K data;
+        private final String baseEsName;
+        private final String accordEsName;
+
+        EsInfoEntity(K data) {
+            this.data = data;
+            this.baseEsName = EsHelper.getBaseEsName(this.data);
+            this.accordEsName = this.calAccordEsName();
+        }
+
+        private String calAccordEsName() {
+            Class<? extends BaseEs> esClazz = this.data.giveEsModel();
+
+            if (esClazz.isAnnotationPresent(EsTableName.class)) {
+                return esClazz.getAnnotation(EsTableName.class).value();
+            }
+
+            if (!(this.data instanceof ISplitCollection)) {
+                return this.baseEsName;
+            }
+
+            String splitIndex = ((ISplitCollection) this.data).calSplitIndex();
+
+            return SplitCollectionHelper.combineNameWithSplitIndex(this.baseEsName, splitIndex);
+        }
+
+        private String getMapping(JestClient jestClient) {
+            String mapping = BaseEs.getMappingFromCache(jestClient, this.baseEsName);
+            if (mapping != null) {
+                return mapping;
+            }
+
+            mapping = JsonHelper.writeValueAsString(EsHelper.getMapping(this.data.giveEsModel()));
+
+            BaseEs.getAccordEsNameByData(jestClient, this.baseEsName, this.accordEsName, mapping);
+
+            return mapping;
+        }
+
+        public EsUnitInfo getInfo(JestClient jestClient) {
+            EsUnitInfo info = new EsUnitInfo();
+
+            info.setBaseEsName(this.baseEsName);
+            info.setEsName(this.accordEsName);
+            info.setMapping(this.getMapping(jestClient));
+
+            return info;
+        }
+    }
+
+    @Setter
+    @Getter
+    public static class EsUnitInfo {
+        private String baseEsName;
+
+        private String esName;
+
+        private String mapping;
+
+        public static <M extends ISearch<? extends BaseEs>> EsUnitInfo of(M judge, JestClient jestClient) {
+            EsInfoEntity<M> entity = new EsInfoEntity<>(judge);
+
+            return entity.getInfo(jestClient);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            EsUnitInfo info = (EsUnitInfo) o;
+            return Objects.equals(baseEsName, info.baseEsName) && Objects.equals(esName, info.esName);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(baseEsName, esName);
+        }
+    }
+
+    @Setter
+    @Getter
+    public static class InitEsUnit {
+        private String baseEsName;
+
+        private Class<? extends BaseEs> esClazz;
+
+        private String mapping;
+
+        public static InitEsUnit of(Class<? extends ISearch<? extends BaseEs>> clazz) {
+            InitEsUnit result = new InitEsUnit();
+
+            ISearch<? extends BaseEs> data;
+            try {
+                data = clazz.getDeclaredConstructor().newInstance();
+            } catch (Exception e) {
+                throw new BizException("创建数据错误");
+            }
+
+            result.setBaseEsName(EsHelper.getBaseEsName(data));
+            result.setEsClazz(data.giveEsModel());
+            result.setMapping(JsonHelper.writeValueAsString(EsHelper.getMapping(data.giveEsModel())));
+
+            return result;
         }
     }
 }
