@@ -258,8 +258,6 @@ public class CommonCountProvider {
             throw new BizException(String.format("intervalDays cant lt 1: %s", intervalDays));
         }
 
-        this.cleanUnsettle();
-
         Date currentTime = new Date();
         String currentDate = DateHelper.dateToString(currentTime, DateHelper.DateFormatEnum.fullUntilDay);
         Date limitTime = DateHelper.plusDurationOfDate(currentTime, Duration.ofDays(intervalDays * -1));
@@ -301,16 +299,6 @@ public class CommonCountProvider {
                 this.persistProvider.persist(persistEntities, afterDbPersist);
             }
         }
-    }
-
-    private void cleanUnsettle() {
-        Query query = new Query();
-        query.addCriteria(Criteria.where("_id").ne(null));
-        query.limit(10000);
-
-        List<? extends CommonCountPersistHistory> histories = this.mongoTemplate.find(query, persistHistoryDbClazz);
-        List<String> ids = CollectionHelper.map(histories, o -> o.getId().toString(16));
-        this.countHistorySender.apply(ids);
     }
 
     public MongoPersistEntity.AfterDbPersistInterface insertPersistHistory(
@@ -465,7 +453,7 @@ public class CommonCountProvider {
         }
     }
 
-    public MongoPersistEntity.PersistEntity distributeSafeMultiBizCount(Map<CountBiz, Long> bizIncMap, Date occurTime, boolean afterAllCacheIsImportant) {
+    public MongoPersistEntity.PersistEntity distributeSafeMultiBizCount(Map<CountBiz, Long> bizIncMap, Date occurTime) {
         MongoPersistEntity.PersistEntity persistEntity = new MongoPersistEntity.PersistEntity();
 
         String occurDate = DateHelper.dateToString(occurTime, DateHelper.DateFormatEnum.fullUntilDay);
@@ -497,53 +485,32 @@ public class CommonCountProvider {
             return persistEntity;
         }
 
-        if (afterAllCacheIsImportant) {
-            for (CountBizEntity countBizEntity : countBizEntityList) {
-                DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity =
-                        DistributedKeyProvider.KeyEntity.of(
-                                redisAbout.getCountBizAfterAllTotalCacheKeyType(),
-                                JsonHelper.writeValueAsString(countBizEntity.biz)
-                        );
+        for (CountBizEntity countBizEntity : countBizEntityList) {
+            DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity =
+                    DistributedKeyProvider.KeyEntity.of(
+                            redisAbout.getCountBizAfterAllTotalCacheKeyType(),
+                            JsonHelper.writeValueAsString(countBizEntity.biz)
+                    );
 
-                MongoPersistEntity.CacheInterface cache = new MongoPersistEntity.CacheInterface() {
+            MongoPersistEntity.CacheInterface cache = new MongoPersistEntity.CacheInterface() {
 
-                    @Override
-                    public void persist() {
-                        long afterAllTotal = countBizEntity.afterAllTotal;
-
-                        redisAbout.getRedisProvider().set(
-                                keyEntity,
-                                RedisProvider.AcceptType.of(afterAllTotal),
-                                redisAbout.getCacheDuration()
-                        );
-                    }
-
-                    @Override
-                    public void rollback() {
-                        redisAbout.getRedisProvider().delete(keyEntity);
-                    }
-                };
-                persistEntity.getCacheList().add(cache);
-            }
-        } else {
-            MongoPersistEntity.MessageInterface message = new MongoPersistEntity.MessageInterface() {
                 @Override
-                public void send() {
-                    for (CountBizEntity countBizEntity : countBizEntityList) {
-                        long afterAllTotal = countBizEntity.afterAllTotal;
+                public void persist() {
+                    long afterAllTotal = countBizEntity.afterAllTotal;
 
-                        redisAbout.getRedisProvider().set(
-                                DistributedKeyProvider.KeyEntity.of(
-                                        redisAbout.getCountBizAfterAllTotalCacheKeyType(),
-                                        JsonHelper.writeValueAsString(countBizEntity.biz)
-                                ),
-                                RedisProvider.AcceptType.of(afterAllTotal),
-                                redisAbout.getCacheDuration()
-                        );
-                    }
+                    redisAbout.getRedisProvider().set(
+                            keyEntity,
+                            RedisProvider.AcceptType.of(afterAllTotal),
+                            redisAbout.getCacheDuration()
+                    );
+                }
+
+                @Override
+                public void rollback() {
+                    redisAbout.getRedisProvider().delete(keyEntity);
                 }
             };
-            persistEntity.getMessages().add(message);
+            persistEntity.getCacheList().add(cache);
         }
 
         return persistEntity;
