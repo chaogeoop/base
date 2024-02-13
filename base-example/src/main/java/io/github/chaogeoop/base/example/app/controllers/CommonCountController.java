@@ -36,15 +36,7 @@ public class CommonCountController {
 
     @PostMapping("/upload")
     public HttpResult<Boolean> upload(@RequestBody BizInput input) {
-        MongoPersistEntity.PersistEntity persistEntity = new MongoPersistEntity.PersistEntity();
-        ArrayList<MongoPersistEntity.PersistEntity> entities = Lists.newArrayList(persistEntity);
-        MongoPersistEntity.AfterDbPersistInterface func = new MongoPersistEntity.AfterDbPersistInterface() {
-            @Override
-            public void handle(MongoPersistEntity.PersistMap persistMap) {
-
-            }
-        };
-
+        List<MongoPersistEntity.PersistEntity> entities = new ArrayList<>();
         for (int i = 0; i < 1000; i++) {
             Map<CommonCountProvider.CountBizDate, Long> map = new HashMap<>();
             for (String date : input.getDates()) {
@@ -55,10 +47,11 @@ public class CommonCountController {
                 }
             }
 
-            func = this.commonCountProvider.insertPersistHistory(entities, map);
+            MongoPersistEntity.PersistEntity persistEntity = this.commonCountProvider.insertPersistHistory(map);
+            entities.add(persistEntity);
         }
 
-        persistProvider.persist(entities, func);
+        this.persistProvider.persist(entities);
 
         return HttpResult.of(true);
     }

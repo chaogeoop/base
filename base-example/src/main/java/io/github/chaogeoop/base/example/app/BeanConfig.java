@@ -3,6 +3,7 @@ package io.github.chaogeoop.base.example.app;
 import io.github.chaogeoop.base.business.common.CommonCountProvider;
 import io.github.chaogeoop.base.business.elasticsearch.EsProvider;
 import io.github.chaogeoop.base.business.mongodb.PersistProvider;
+import io.github.chaogeoop.base.business.redis.DistributedKeyProvider;
 import io.github.chaogeoop.base.business.redis.RedisProvider;
 import io.github.chaogeoop.base.business.common.helpers.JsonHelper;
 import io.github.chaogeoop.base.example.app.constants.RabbitmqConstants;
@@ -80,15 +81,15 @@ public class BeanConfig {
                         CommonCountKeyRegister.COMMON_COUNT_TOTAL_CREATE_LOCK_TYPE,
                         CommonCountKeyRegister.COUNT_BIZ_DATE_CACHE_TYPE,
                         CommonCountKeyRegister.COMMON_COUNT_PERSIST_HISTORY_PERSIST_LOCK_TYPE,
-                        CommonCountKeyRegister.COUNT_BIZ_AFTER_ALL_TOTAL_CACHE_TYPE
+                        CommonCountKeyRegister.COUNT_BIZ_AFTER_ALL_TOTAL_CACHE_TYPE,
+                        DistributedKeyProvider.KeyEntity.of(CommonCountKeyRegister.COMMON_COUNT_PERSIST_HISTORY_HASH_STORE_TYPE, "hash")
                 ),
                 o -> {
                     this.rabbitTemplate.convertAndSend(RabbitmqConstants.COMMON_COUNT_PERSIST_HISTORY_QUEUE, JsonHelper.writeValueAsString(o));
                     return null;
                 },
                 TestCommonCountTotal.class,
-                TestCommonCountDateLog.class,
-                TestCommonCountPersistHistory.class
+                TestCommonCountDateLog.class
         );
     }
 }

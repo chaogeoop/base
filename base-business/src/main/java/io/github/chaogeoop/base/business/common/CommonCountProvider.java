@@ -42,7 +42,6 @@ public class CommonCountProvider {
     private final Function<List<String>, NullType> countHistorySender;
     private final Class<? extends CommonCountTotal> totalDbClazz;
     private final Class<? extends CommonCountDateLog> dateLogDbClazz;
-    private final Class<? extends CommonCountPersistHistory> persistHistoryDbClazz;
 
 
     public CommonCountProvider(
@@ -50,8 +49,7 @@ public class CommonCountProvider {
             RedisAbout<? extends DistributedKeyType> redisAbout,
             Function<List<String>, NullType> countHistorySender,
             Class<? extends CommonCountTotal> totalDbClazz,
-            Class<? extends CommonCountDateLog> dateLogDbClazz,
-            Class<? extends CommonCountPersistHistory> persistHistoryDbClazz
+            Class<? extends CommonCountDateLog> dateLogDbClazz
     ) {
         this.persistProvider = persistProvider;
         this.mongoTemplate = this.persistProvider.giveMongoTemplate();
@@ -59,9 +57,6 @@ public class CommonCountProvider {
         this.countHistorySender = countHistorySender;
         this.totalDbClazz = totalDbClazz;
         this.dateLogDbClazz = dateLogDbClazz;
-        this.persistHistoryDbClazz = persistHistoryDbClazz;
-
-        BaseModel.getBaseCollectionNameByClazz(this.mongoTemplate, this.persistHistoryDbClazz);
     }
 
     public Map<CountBiz, Long> getBizTotalMapWithCacheExcept(Set<CountBiz> allBizList, Set<CountBiz> skipCacheBizList) {
@@ -294,14 +289,13 @@ public class CommonCountProvider {
                     bizDateIncMap.put(log.convertToBizDate(currentDate), 0L);
                 }
 
-                List<MongoPersistEntity.PersistEntity> persistEntities = Lists.newArrayList(new MongoPersistEntity.PersistEntity());
-                MongoPersistEntity.AfterDbPersistInterface afterDbPersist = this.insertPersistHistory(persistEntities, bizDateIncMap);
-                this.persistProvider.persist(persistEntities, afterDbPersist);
+                MongoPersistEntity.PersistEntity persistEntity = this.insertPersistHistory(bizDateIncMap);
+                this.persistProvider.persist(Lists.newArrayList(persistEntity));
             }
         }
     }
 
-    public MongoPersistEntity.AfterDbPersistInterface insertPersistHistory(
+    public MongoPersistEntity.PersistEntity insertPersistHistoryNow(
             Map<CountBiz, Long> bizIncMap, List<MongoPersistEntity.PersistEntity> persistEntityList
     ) {
         String date = DateHelper.dateToString(DateHelper.plusDurationOfDate(new Date(), Duration.ofSeconds(-10)), DateHelper.DateFormatEnum.fullUntilDay);
@@ -311,46 +305,43 @@ public class CommonCountProvider {
             bizDateIncMap.put(entry.getKey().convertToBizDate(date), entry.getValue());
         }
 
-        return this.insertPersistHistory(persistEntityList, bizDateIncMap);
+        return this.insertPersistHistory(bizDateIncMap);
     }
 
-    public MongoPersistEntity.AfterDbPersistInterface insertPersistHistory(
-            List<MongoPersistEntity.PersistEntity> persistEntityList, Map<CountBizDate, Long> bizDateIncMap
-    ) {
+    public MongoPersistEntity.PersistEntity insertPersistHistory(Map<CountBizDate, Long> bizDateIncMap) {
         MongoPersistEntity.PersistEntity persistEntity = new MongoPersistEntity.PersistEntity();
-        persistEntityList.add(persistEntity);
 
+        Map<String, RedisProvider.AcceptType> map = new HashMap<>();
         for (Map.Entry<CountBizDate, Long> entry : bizDateIncMap.entrySet()) {
-            CommonCountPersistHistory data = CommonCountPersistHistory.of(this.persistHistoryDbClazz, entry.getKey(), entry.getValue());
+            CommonCountPersistHistory data = CommonCountPersistHistory.of(CommonCountPersistHistory.class, entry.getKey(), entry.getValue());
+            String key = UUID.randomUUID().toString();
 
-            persistEntity.getDatabase().insert(data);
+            map.put(key, RedisProvider.AcceptType.of(JsonHelper.writeValueAsString(data)));
         }
 
-        return new MongoPersistEntity.AfterDbPersistInterface() {
+        MongoPersistEntity.CacheInterface historyStoreCache = new MongoPersistEntity.CacheInterface() {
             @Override
-            public void handle(MongoPersistEntity.PersistMap persistMap) {
-                List<String> historyIds = new ArrayList<>();
+            public void persist() {
+                redisAbout.getRedisProvider().hmset(redisAbout.getCountHistoryHashKey(), map);
+            }
 
-                for (Map.Entry<MongoPersistEntity.ModelClazzCollectionName, List<BaseModel>> entry : persistMap.getInsertMap().entrySet()) {
-                    Class<? extends BaseModel> clazz = entry.getKey().getModelClazz();
-                    if (clazz != persistHistoryDbClazz) {
-                        continue;
-                    }
-
-                    historyIds.addAll(CollectionHelper.map(entry.getValue(), o -> o.getId().toString(16)));
-                }
-
-                MongoPersistEntity.MessageInterface message = new MongoPersistEntity.MessageInterface() {
-
-                    @Override
-                    public void send() {
-                        countHistorySender.apply(historyIds);
-                    }
-                };
-
-                persistMap.getMessages().add(message);
+            @Override
+            public void rollback() {
+                redisAbout.getRedisProvider().hdel(redisAbout.getCountHistoryHashKey(), map.keySet());
             }
         };
+
+        MongoPersistEntity.MessageInterface message = new MongoPersistEntity.MessageInterface() {
+            @Override
+            public void send() {
+                countHistorySender.apply(Lists.newArrayList(map.keySet()));
+            }
+        };
+
+        persistEntity.getCacheList().add(historyStoreCache);
+        persistEntity.getMessages().add(message);
+
+        return persistEntity;
     }
 
     public void historyToCount(List<String> ids) {
@@ -377,10 +368,7 @@ public class CommonCountProvider {
 
             @Override
             public CommonCountPersistHistory findResource() {
-                Query query = new Query();
-                query.addCriteria(Criteria.where("_id").is(new ObjectId(id)));
-
-                return mongoTemplate.findOne(query, persistHistoryDbClazz);
+                return redisAbout.getRedisProvider().hget(redisAbout.getCountHistoryHashKey(), id, CommonCountPersistHistory.class);
             }
 
             @Override
@@ -396,12 +384,26 @@ public class CommonCountProvider {
             CountBizEntity countBizEntity = new CountBizEntity(bizDate, o.getTotal());
             MongoPersistEntity.PersistEntity persistEntity = new MongoPersistEntity.PersistEntity();
 
+
+            MongoPersistEntity.CacheInterface deleteHistoryCache = new MongoPersistEntity.CacheInterface() {
+                @Override
+                public void persist() {
+                    redisAbout.getRedisProvider().hdel(redisAbout.getCountHistoryHashKey(), Sets.newHashSet(id));
+                }
+
+                @Override
+                public void rollback() {
+
+                }
+            };
+
             if (!countBizEntity.needLock) {
                 countBizEntity.initCacheAbout();
                 countBizEntity.setCommonCountDateLog();
                 countBizEntity.collectNeedPersist(persistEntity);
 
-                this.handleDeleteHistory(persistEntity, o);
+                persistEntity.getCacheList().add(deleteHistoryCache);
+
                 this.persistProvider.persist(Lists.newArrayList(persistEntity));
             } else {
                 this.redisAbout.getRedisProvider().exeFuncWithLock(
@@ -412,7 +414,8 @@ public class CommonCountProvider {
                             countBizEntity.setCommonCountDateLog();
                             countBizEntity.collectNeedPersist(persistEntity);
 
-                            this.handleDeleteHistory(persistEntity, o);
+                            persistEntity.getCacheList().add(deleteHistoryCache);
+
                             this.persistProvider.persist(Lists.newArrayList(persistEntity));
 
                             return null;
@@ -434,24 +437,6 @@ public class CommonCountProvider {
         }, o -> null);
     }
 
-    private void handleDeleteHistory(MongoPersistEntity.PersistEntity persistEntity, CommonCountPersistHistory history) {
-        if (persistEntity.getDatabase().isEmpty()) {
-            MongoPersistEntity.CacheInterface deleteHistory = new MongoPersistEntity.CacheInterface() {
-                @Override
-                public void persist() {
-                    mongoTemplate.remove(history);
-                }
-
-                @Override
-                public void rollback() {
-
-                }
-            };
-            persistEntity.getCacheList().add(deleteHistory);
-        } else {
-            persistEntity.getDatabase().delete(history);
-        }
-    }
 
     public MongoPersistEntity.PersistEntity distributeSafeMultiBizCount(Map<CountBiz, Long> bizIncMap, Date occurTime) {
         MongoPersistEntity.PersistEntity persistEntity = new MongoPersistEntity.PersistEntity();
@@ -1318,10 +1303,12 @@ public class CommonCountProvider {
 
         private M countBizAfterAllTotalCacheKeyType;
 
+        private DistributedKeyProvider.KeyEntity<M> countHistoryHashKey;
+
         public static <M extends DistributedKeyType> RedisAbout<M> of(
                 RedisProvider redisProvider, boolean cacheAfterAllTotal, Duration cacheDuration,
                 M commonCountTotalCacheKeyType, M commonCountTotalCreateLockType, M countBizDateCacheKeyType,
-                M commonCountPersistHistoryLockType, M countBizAfterAllTotalCacheKeyType
+                M commonCountPersistHistoryLockType, M countBizAfterAllTotalCacheKeyType, DistributedKeyProvider.KeyEntity<M> countHistoryHashKey
         ) {
             RedisAbout<M> data = new RedisAbout<>();
 
@@ -1333,6 +1320,7 @@ public class CommonCountProvider {
             data.setCountBizDateCacheKeyType(countBizDateCacheKeyType);
             data.setCommonCountPersistHistoryLockType(commonCountPersistHistoryLockType);
             data.setCountBizAfterAllTotalCacheKeyType(countBizAfterAllTotalCacheKeyType);
+            data.setCountHistoryHashKey(countHistoryHashKey);
 
             return data;
         }

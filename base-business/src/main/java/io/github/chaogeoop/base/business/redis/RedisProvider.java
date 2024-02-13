@@ -201,6 +201,19 @@ public class RedisProvider {
         this.template.opsForHash().putAll(this.distributedKeyProvider.getKey(keyEntity), valueMap);
     }
 
+    public Long hdel(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, Set<String> hashKeys) {
+        return this.template.opsForHash().delete(this.distributedKeyProvider.getKey(keyEntity), hashKeys.toArray());
+    }
+
+    public <T> T hget(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, String hashKey, Class<T> clazz) {
+        Object result = this.template.opsForHash().get(this.distributedKeyProvider.getKey(keyEntity), hashKey);
+        if (result == null) {
+            return null;
+        }
+
+        return JsonHelper.readValue(result.toString(), clazz);
+    }
+
 
     //application
     @Nullable

@@ -21,6 +21,9 @@ public class CommonCountKeyRegister implements IKeyRegister<CommonCountKeyRegist
     public static CommonCountDistributedKey COMMON_COUNT_PERSIST_HISTORY_PERSIST_LOCK_TYPE =
             CommonCountDistributedKey.of("commonCountPersistHistory", "persistLock");
 
+    public static CommonCountDistributedKey COMMON_COUNT_PERSIST_HISTORY_HASH_STORE_TYPE =
+            CommonCountDistributedKey.of("commonCountPersistHistory", "hashStore");
+
     public static CommonCountDistributedKey COUNT_BIZ_AFTER_ALL_TOTAL_CACHE_TYPE =
             CommonCountDistributedKey.of("countBizAfterAllTotal", "cache");
 
@@ -32,6 +35,7 @@ public class CommonCountKeyRegister implements IKeyRegister<CommonCountKeyRegist
         list.add(COMMON_COUNT_TOTAL_CREATE_LOCK_TYPE);
         list.add(COUNT_BIZ_DATE_CACHE_TYPE);
         list.add(COMMON_COUNT_PERSIST_HISTORY_PERSIST_LOCK_TYPE);
+        list.add(COMMON_COUNT_PERSIST_HISTORY_HASH_STORE_TYPE);
         list.add(COUNT_BIZ_AFTER_ALL_TOTAL_CACHE_TYPE);
 
         return list;
