@@ -78,12 +78,12 @@ public class RedisProvider {
     }
 
     public <T> List<T> multiGet(List<DistributedKeyProvider.KeyEntity<? extends DistributedKeyType>> keys, Class<T> clazz) {
-        List<T> list = new ArrayList<>();
-
         List<Object> values = this.template.opsForValue().multiGet(CollectionHelper.map(keys, this.distributedKeyProvider::getKey));
         if (values == null) {
             return CollectionHelper.map(keys, o -> null);
         }
+
+        List<T> list = new ArrayList<>(values.size());
 
         for (Object value : values) {
             if (value == null) {
@@ -97,15 +97,6 @@ public class RedisProvider {
         return list;
     }
 
-    public <T> void multiSet(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, Map<String, AcceptType> map) {
-        Map<String, Object> valueMap = new HashMap<>();
-        for (Map.Entry<String, AcceptType> entry : map.entrySet()) {
-            valueMap.put(entry.getKey(), entry.getValue().getValue());
-        }
-
-        this.template.opsForValue().multiSet(valueMap);
-    }
-
     //setOperator
     public <T> T spop(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, Class<T> clazz) {
         Object value = this.template.opsForSet().pop(this.distributedKeyProvider.getKey(keyEntity));
@@ -117,7 +108,7 @@ public class RedisProvider {
     }
 
     public <T> List<T> spop(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, int count, Class<T> clazz) {
-        List<T> results = new ArrayList<>();
+        List<T> results = new ArrayList<>(count);
 
         List<Object> values = this.template.opsForSet().pop(this.distributedKeyProvider.getKey(keyEntity), count);
         if (values == null) {
@@ -173,7 +164,7 @@ public class RedisProvider {
         HashOperations<String, String, Object> hashOperator = this.template.opsForHash();
 
         List<Object> values = hashOperator.multiGet(this.distributedKeyProvider.getKey(keyEntity), hashKeys);
-        List<T> results = new ArrayList<>();
+        List<T> results = new ArrayList<>(values.size());
 
         for (Object value : values) {
             if (value == null) {
@@ -188,7 +179,7 @@ public class RedisProvider {
     }
 
     public void hmset(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, Map<String, AcceptType> map) {
-        Map<String, Object> valueMap = new HashMap<>();
+        Map<String, Object> valueMap = new HashMap<>(map.size());
 
         for (Map.Entry<String, AcceptType> entry : map.entrySet()) {
             valueMap.put(entry.getKey(), entry.getValue().getValue());
@@ -308,7 +299,7 @@ public class RedisProvider {
     public <K, V, T extends DistributedKeyType> Map<K, V> getMapFromValueCache(
             T type, Duration timeout, Class<V> clazz, List<K> ids, Function<List<K>, Map<K, V>> func
     ) {
-        Map<K, V> map = new HashMap<>();
+        Map<K, V> map = new HashMap<>(ids.size());
         if (CollectionHelper.isEmpty(ids)) {
             return map;
         }
@@ -368,7 +359,7 @@ public class RedisProvider {
             List<K> ids, Class<V> clazz, DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity,
             int timeout, TimeUnit timeUnit, Function<List<K>, Map<K, V>> func
     ) {
-        Map<K, V> map = new HashMap<>();
+        Map<K, V> map = new HashMap<>(ids.size());
         List<K> needCacheIds = new ArrayList<>();
 
         List<V> cacheList = this.hmget(keyEntity, CollectionHelper.map(ids, JsonHelper::writeValueAsString), clazz);
@@ -391,7 +382,7 @@ public class RedisProvider {
 
         map.putAll(needCacheMap);
 
-        Map<String, AcceptType> stringCacheMap = new HashMap<>();
+        Map<String, AcceptType> stringCacheMap = new HashMap<>(needCacheMap.size());
         for (Map.Entry<K, V> entry : needCacheMap.entrySet()) {
             if (entry.getValue() == null) {
                 continue;
