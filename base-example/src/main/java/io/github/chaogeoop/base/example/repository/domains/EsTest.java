@@ -35,7 +35,7 @@ public class EsTest extends BaseModel implements ISplitCollection, ISearch<EsTes
 
     @Override
     public String calSplitIndex() {
-        int offset = this.getFamilyId().toString().hashCode() % 2;
+        int offset = Math.abs(this.getFamilyId().toString().hashCode() % 2);
 
         return String.valueOf(offset);
     }

@@ -1068,7 +1068,7 @@ public class CommonCountProvider {
 
         @Override
         public String calSplitIndex() {
-            int offset = this.typeId.hashCode() % 2;
+            int offset = Math.abs(this.typeId.hashCode() % 2);
 
             return String.valueOf(offset);
         }
