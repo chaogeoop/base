@@ -1,12 +1,13 @@
 package io.github.chaogeoop.base.example.app.services;
 
-import io.github.chaogeoop.base.business.common.entities.UserContext;
+import io.github.chaogeoop.base.business.common.entities.BaseUserContext;
 import io.github.chaogeoop.base.business.common.interfaces.IUserContextConverter;
 import io.github.chaogeoop.base.business.mongodb.IPrimaryChooseStamp;
 import io.github.chaogeoop.base.business.redis.DistributedKeyProvider;
 import io.github.chaogeoop.base.business.redis.RedisProvider;
 import io.github.chaogeoop.base.business.common.helpers.JsonHelper;
 import io.github.chaogeoop.base.example.app.keyregisters.UserKeyRegister;
+import io.github.chaogeoop.base.example.repository.entities.UserContext;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -21,7 +22,7 @@ public class UserService implements IUserContextConverter, IPrimaryChooseStamp {
     private RedisProvider redisProvider;
 
     @Override
-    public UserContext convert(NativeWebRequest request) {
+    public BaseUserContext convert(NativeWebRequest request) {
         String stringUserId = request.getHeader("userId");
 
         UserContext userContext = new UserContext();
@@ -33,7 +34,8 @@ public class UserService implements IUserContextConverter, IPrimaryChooseStamp {
     }
 
     @Override
-    public void record(UserContext userContext, long stamp) {
+    public void record(BaseUserContext baseUserContext, long stamp) {
+        UserContext userContext = (UserContext) baseUserContext;
         if (userContext.getUserId() == null) {
             return;
         }
@@ -47,7 +49,8 @@ public class UserService implements IUserContextConverter, IPrimaryChooseStamp {
     }
 
     @Override
-    public Long read(UserContext userContext) {
+    public Long read(BaseUserContext baseUserContext) {
+        UserContext userContext = (UserContext) baseUserContext;
         if (userContext.getUserId() == null) {
             return null;
         }

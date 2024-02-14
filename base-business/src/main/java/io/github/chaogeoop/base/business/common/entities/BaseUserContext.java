@@ -5,6 +5,5 @@ import lombok.Setter;
 
 @Setter
 @Getter
-public class UserContext {
-    private Long userId;
+public class BaseUserContext {
 }
