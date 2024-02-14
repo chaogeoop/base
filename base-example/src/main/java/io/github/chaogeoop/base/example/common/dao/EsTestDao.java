@@ -11,6 +11,7 @@ import io.github.chaogeoop.base.example.repository.domains.EsTest;
 import io.github.chaogeoop.base.example.repository.domains.QEsTest;
 import io.github.chaogeoop.base.example.repository.es.EsTestInEs;
 import com.querydsl.core.BooleanBuilder;
+import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@Slf4j
 public class EsTestDao implements ISplitPrimaryChooseRepository<EsTest> {
     @Autowired
     private MongoTemplate mongoTemplate;
@@ -41,6 +43,21 @@ public class EsTestDao implements ISplitPrimaryChooseRepository<EsTest> {
     @Override
     public MongoTemplate getSlaver() {
         return slaverMongoTemplate;
+    }
+
+    @Override
+    public MongoTemplate getAccord() {
+        MongoTemplate accord = ISplitPrimaryChooseRepository.super.getAccord();
+
+        if (accord == this.getPrimary()) {
+            log.info("读主库");
+        }
+
+        if (accord == this.getSlaver()) {
+            log.info("读从库");
+        }
+
+        return accord;
     }
 
     @Override
