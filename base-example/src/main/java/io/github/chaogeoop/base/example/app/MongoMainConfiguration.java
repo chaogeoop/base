@@ -17,7 +17,6 @@ import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
 import org.springframework.data.mongodb.core.mapping.MongoMappingContext;
 
 @Configuration
-@BaseEnableMongoRepositories(basePackages = "io.github.chaogeoop.base.example.repository.repositories.main")
 public class MongoMainConfiguration {
     @Value("${mongodb.main.connectUrl}")
     private String primaryUrl;

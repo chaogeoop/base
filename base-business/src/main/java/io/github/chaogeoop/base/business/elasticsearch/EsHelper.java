@@ -570,7 +570,7 @@ public class EsHelper {
     @Setter
     @Getter
     public static class TextAndNestedInfo {
-        private List<String> textFields = new ArrayList<>();
+        private Set<String> textFields = new HashSet<>();
 
         private Map<String, String> nestedTextFieldPathMap = new HashMap<>();
 
@@ -582,7 +582,7 @@ public class EsHelper {
         public TextAndNestedInfo giveCopy() {
             TextAndNestedInfo data = new TextAndNestedInfo();
 
-            data.setTextFields(Lists.newArrayList(this.textFields));
+            data.setTextFields(Sets.newHashSet(this.textFields));
             data.setNestedTextFieldPathMap(Maps.newHashMap(this.nestedTextFieldPathMap));
             data.setHasKeywordTextFields(Sets.newHashSet(this.hasKeywordTextFields));
             data.setNestedTermFieldPathMap(Maps.newHashMap(this.nestedTermFieldPathMap));
