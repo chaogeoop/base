@@ -1,6 +1,6 @@
 package io.github.chaogeoop.base.business.common.annotations;
 
-import io.github.chaogeoop.base.business.common.entities.BaseUserContext;
+import io.github.chaogeoop.base.business.common.interfaces.IUserContext;
 import io.github.chaogeoop.base.business.common.enums.DatabaseActionEnum;
 import io.github.chaogeoop.base.business.mongodb.IPrimaryChooseStamp;
 import io.github.chaogeoop.base.business.threadlocals.PrimaryChooseHolder;
@@ -37,7 +37,7 @@ public class DatabaseActionAspect {
         Parameter[] parameters = method.getParameters();
         DatabaseAction annotation = method.getAnnotation(DatabaseAction.class);
 
-        BaseUserContext userContext = null;
+        IUserContext userContext = null;
 
         for (int i = 0; i < parameters.length; i++) {
             Parameter parameter = parameters[i];
@@ -46,7 +46,7 @@ public class DatabaseActionAspect {
                 continue;
             }
 
-            if (!BaseUserContext.class.isAssignableFrom(parameter.getType())) {
+            if (!IUserContext.class.isAssignableFrom(parameter.getType())) {
                 throw new BizException("only UserContext can have UserInfo annotation");
             }
 
@@ -55,7 +55,7 @@ public class DatabaseActionAspect {
                 throw new BizException("UserContext is null");
             }
 
-            userContext = (BaseUserContext) arg;
+            userContext = (IUserContext) arg;
 
             break;
         }
@@ -86,7 +86,7 @@ public class DatabaseActionAspect {
         Parameter[] parameters = method.getParameters();
         DatabaseAction annotation = method.getAnnotation(DatabaseAction.class);
 
-        BaseUserContext userContext = null;
+        IUserContext userContext = null;
 
         for (int i = 0; i < parameters.length; i++) {
             Parameter parameter = parameters[i];
@@ -95,7 +95,7 @@ public class DatabaseActionAspect {
                 continue;
             }
 
-            if (!BaseUserContext.class.isAssignableFrom(parameter.getType())) {
+            if (!IUserContext.class.isAssignableFrom(parameter.getType())) {
                 throw new BizException("only UserContext can have UserInfo annotation");
             }
 
@@ -104,7 +104,7 @@ public class DatabaseActionAspect {
                 throw new BizException("UseContext is null");
             }
 
-            userContext = (BaseUserContext) arg;
+            userContext = (IUserContext) arg;
 
             break;
         }

@@ -1,6 +1,6 @@
 package io.github.chaogeoop.base.business.common.annotations;
 
-import io.github.chaogeoop.base.business.common.entities.BaseUserContext;
+import io.github.chaogeoop.base.business.common.interfaces.IUserContext;
 import io.github.chaogeoop.base.business.common.interfaces.IUserContextConverter;
 import org.springframework.core.MethodParameter;
 import org.springframework.web.bind.support.WebDataBinderFactory;
@@ -17,13 +17,13 @@ public class UserInfoAnnotationArgumentResolver implements HandlerMethodArgument
 
     @Override
     public boolean supportsParameter(MethodParameter parameter) {
-        boolean existUserContext = BaseUserContext.class.isAssignableFrom(parameter.getParameterType());
+        boolean existUserContext = IUserContext.class.isAssignableFrom(parameter.getParameterType());
 
         return existUserContext & parameter.hasParameterAnnotation(UserInfo.class);
     }
 
     @Override
-    public BaseUserContext resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer, NativeWebRequest request, WebDataBinderFactory binderFactory) {
+    public IUserContext resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer, NativeWebRequest request, WebDataBinderFactory binderFactory) {
         return this.userContextConverter.convert(request);
     }
 }

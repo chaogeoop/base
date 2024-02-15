@@ -3,7 +3,6 @@ package io.github.chaogeoop.base.example.app.controllers;
 import io.github.chaogeoop.base.business.common.annotations.DatabaseAction;
 import io.github.chaogeoop.base.business.common.annotations.IoMonitor;
 import io.github.chaogeoop.base.business.common.annotations.UserInfo;
-import io.github.chaogeoop.base.business.common.entities.BaseUserContext;
 import io.github.chaogeoop.base.business.common.enums.DatabaseActionEnum;
 import io.github.chaogeoop.base.business.mongodb.MongoPersistEntity;
 import io.github.chaogeoop.base.business.mongodb.PersistProvider;

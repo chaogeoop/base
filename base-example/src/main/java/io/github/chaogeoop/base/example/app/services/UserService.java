@@ -1,6 +1,6 @@
 package io.github.chaogeoop.base.example.app.services;
 
-import io.github.chaogeoop.base.business.common.entities.BaseUserContext;
+import io.github.chaogeoop.base.business.common.interfaces.IUserContext;
 import io.github.chaogeoop.base.business.common.interfaces.IUserContextConverter;
 import io.github.chaogeoop.base.business.mongodb.IPrimaryChooseStamp;
 import io.github.chaogeoop.base.business.redis.DistributedKeyProvider;
@@ -22,7 +22,7 @@ public class UserService implements IUserContextConverter, IPrimaryChooseStamp {
     private RedisProvider redisProvider;
 
     @Override
-    public BaseUserContext convert(NativeWebRequest request) {
+    public IUserContext convert(NativeWebRequest request) {
         String stringUserId = request.getHeader("userId");
 
         UserContext userContext = new UserContext();
@@ -34,7 +34,7 @@ public class UserService implements IUserContextConverter, IPrimaryChooseStamp {
     }
 
     @Override
-    public void record(BaseUserContext baseUserContext, long stamp) {
+    public void record(IUserContext baseUserContext, long stamp) {
         UserContext userContext = (UserContext) baseUserContext;
         if (userContext.getUserId() == null) {
             return;
@@ -49,7 +49,7 @@ public class UserService implements IUserContextConverter, IPrimaryChooseStamp {
     }
 
     @Override
-    public Long read(BaseUserContext baseUserContext) {
+    public Long read(IUserContext baseUserContext) {
         UserContext userContext = (UserContext) baseUserContext;
         if (userContext.getUserId() == null) {
             return null;
