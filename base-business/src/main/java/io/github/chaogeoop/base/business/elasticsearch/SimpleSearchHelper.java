@@ -1,6 +1,6 @@
 package io.github.chaogeoop.base.business.elasticsearch;
 
-import io.github.chaogeoop.base.business.common.entities.PageSplitter;
+import io.github.chaogeoop.base.business.common.entities.EsPageSplitter;
 import io.github.chaogeoop.base.business.common.errors.BizException;
 import io.github.chaogeoop.base.business.common.entities.ListPage;
 import io.github.chaogeoop.base.business.common.helpers.JsonHelper;
@@ -59,21 +59,21 @@ public class SimpleSearchHelper {
     }
 
     public static <M extends BaseEs> ListPage<M> pageQuery(
-            JestClient jestClient, QueryBuilder queryBuilder, PageSplitter pageSplitter, Set<String> indicates, Class<M> clazz
+            JestClient jestClient, QueryBuilder queryBuilder, EsPageSplitter esPageSplitter, Set<String> indicates, Class<M> clazz
     ) {
         if (indicates.isEmpty()) {
-            return ListPage.of(pageSplitter.getOffset(), pageSplitter.getLimit(), 0, new ArrayList<>());
+            return ListPage.of(esPageSplitter.getOffset(), esPageSplitter.getLimit(), 0, new ArrayList<>());
         }
 
-        List<SortBuilder<?>> orders = pageSplitter.calEsSort();
+        List<SortBuilder<?>> orders = esPageSplitter.getEsSort();
 
         SearchSourceBuilder searchBuilder = new SearchSourceBuilder();
         searchBuilder.query(queryBuilder);
         for (SortBuilder<?> order : orders) {
             searchBuilder.sort(order);
         }
-        searchBuilder.from(pageSplitter.getOffset());
-        searchBuilder.size(pageSplitter.getLimit());
+        searchBuilder.from(esPageSplitter.getOffset());
+        searchBuilder.size(esPageSplitter.getLimit());
 
         Search document = new Search.Builder(searchBuilder.toString()).addIndices(indicates).addType("_doc").build();
         SearchResult page = null;
@@ -94,7 +94,7 @@ public class SimpleSearchHelper {
 
         long count = page.getJsonObject().get("hits").getAsJsonObject().get("total").getAsJsonObject().get("value").getAsLong();
 
-        return ListPage.of(pageSplitter.getOffset(), pageSplitter.getLimit(), count, list);
+        return ListPage.of(esPageSplitter.getOffset(), esPageSplitter.getLimit(), count, list);
     }
 
     public static long count(JestClient jestClient, QueryBuilder queryBuilder, Set<String> indicates) {

@@ -1,7 +1,7 @@
 package io.github.chaogeoop.base.business.mongodb.basic;
 
 import io.github.chaogeoop.base.business.common.entities.ListPage;
-import io.github.chaogeoop.base.business.common.entities.PageSplitter;
+import io.github.chaogeoop.base.business.common.entities.MongoPageSplitter;
 import com.querydsl.core.types.Predicate;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoOperations;
@@ -62,25 +62,25 @@ public class BaseSimpleMongoRepository<T extends RootModel, ID extends Serializa
     }
 
     @Override
-    public ListPage<T> pageQuery(Predicate predicate, PageSplitter pageSplitter) {
-        return this.pageQuery(predicate, new ArrayList<>(), pageSplitter);
+    public ListPage<T> pageQuery(Predicate predicate, MongoPageSplitter mongoPageSplitter) {
+        return this.pageQuery(predicate, new ArrayList<>(), mongoPageSplitter);
     }
 
     @Override
-    public ListPage<T> pageQuery(Predicate predicate, List<String> fields, PageSplitter pageSplitter) {
+    public ListPage<T> pageQuery(Predicate predicate, List<String> fields, MongoPageSplitter mongoPageSplitter) {
         Query query = this.mongoQueryBuilder.buildQuery(predicate);
 
-        return this.pageQuery(query, fields, pageSplitter);
+        return this.pageQuery(query, fields, mongoPageSplitter);
     }
 
     @Override
-    public ListPage<T> pageQuery(Query query, PageSplitter pageSplitter) {
-        return this.pageQuery(query, new ArrayList<>(), pageSplitter);
+    public ListPage<T> pageQuery(Query query, MongoPageSplitter mongoPageSplitter) {
+        return this.pageQuery(query, new ArrayList<>(), mongoPageSplitter);
     }
 
     @Override
-    public ListPage<T> pageQuery(Query query, List<String> fields, PageSplitter pageSplitter) {
-        return MongoHelper.pageQuery(this.mongoOperations, query, fields, pageSplitter, this.entityInformation.getJavaType());
+    public ListPage<T> pageQuery(Query query, List<String> fields, MongoPageSplitter mongoPageSplitter) {
+        return MongoHelper.pageQuery(this.mongoOperations, query, fields, mongoPageSplitter, this.entityInformation.getJavaType());
     }
 
     @Override

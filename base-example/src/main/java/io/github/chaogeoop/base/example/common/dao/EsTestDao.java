@@ -1,6 +1,7 @@
 package io.github.chaogeoop.base.example.common.dao;
 
-import io.github.chaogeoop.base.business.common.entities.PageSplitter;
+import com.google.common.collect.Lists;
+import io.github.chaogeoop.base.business.common.entities.EsPageSplitter;
 import io.github.chaogeoop.base.business.elasticsearch.EsHelper;
 import io.github.chaogeoop.base.business.elasticsearch.EsProvider;
 import io.github.chaogeoop.base.business.mongodb.BaseModel;
@@ -13,6 +14,8 @@ import io.github.chaogeoop.base.example.repository.es.EsTestInEs;
 import com.querydsl.core.BooleanBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.search.sort.SortBuilders;
+import org.elasticsearch.search.sort.SortOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -95,11 +98,13 @@ public class EsTestDao implements ISplitPrimaryChooseRepository<EsTest> {
     public List<EsTest> search(EsProvider esProvider, EsHelper.SearchInput input, List<Long> familyIds) {
         BoolQueryBuilder mainQuery = input.convertToEsQuery();
 
-        PageSplitter pageSplitter = PageSplitter.of(0, 10, "-_score");
+        EsPageSplitter esPageSplitter = new EsPageSplitter(
+                0, 10, Lists.newArrayList(SortBuilders.fieldSort("uid").order(SortOrder.DESC).missing("_first"))
+        );
 
         List<EsTest> splitKeys = CollectionHelper.map(familyIds, EsTest::splitKeyOf);
 
-        ListPage<EsTestInEs> esDataPage = esProvider.pageQuery(mainQuery, pageSplitter, splitKeys);
+        ListPage<EsTestInEs> esDataPage = esProvider.pageQuery(mainQuery, esPageSplitter, splitKeys);
         List<Long> accordIds = CollectionHelper.map(esDataPage.getList(), EsTestInEs::getUid);
 
         return this.findByIds(accordIds, familyIds);

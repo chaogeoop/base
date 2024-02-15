@@ -1,7 +1,7 @@
 package io.github.chaogeoop.base.business.mongodb.basic;
 
 import io.github.chaogeoop.base.business.common.entities.ListPage;
-import io.github.chaogeoop.base.business.common.entities.PageSplitter;
+import io.github.chaogeoop.base.business.common.entities.MongoPageSplitter;
 import com.querydsl.core.types.Predicate;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.query.Query;
@@ -23,13 +23,13 @@ public interface BaseMongoRepository<T, ID extends Serializable> extends MongoRe
 
     long count(Query query);
 
-    ListPage<T> pageQuery(Predicate predicate, PageSplitter pageSplitter);
+    ListPage<T> pageQuery(Predicate predicate, MongoPageSplitter mongoPageSplitter);
 
-    ListPage<T> pageQuery(Predicate predicate, List<String> fields, PageSplitter pageSplitter);
+    ListPage<T> pageQuery(Predicate predicate, List<String> fields, MongoPageSplitter mongoPageSplitter);
 
-    ListPage<T> pageQuery(Query query, PageSplitter pageSplitter);
+    ListPage<T> pageQuery(Query query, MongoPageSplitter mongoPageSplitter);
 
-    ListPage<T> pageQuery(Query query, List<String> fields, PageSplitter pageSplitter);
+    ListPage<T> pageQuery(Query query, List<String> fields, MongoPageSplitter mongoPageSplitter);
 
     List<T> listQuery(Predicate predicate, Sort sort);
 

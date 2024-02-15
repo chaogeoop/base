@@ -1,6 +1,6 @@
 package io.github.chaogeoop.base.business.elasticsearch;
 
-import io.github.chaogeoop.base.business.common.entities.PageSplitter;
+import io.github.chaogeoop.base.business.common.entities.EsPageSplitter;
 import io.github.chaogeoop.base.business.common.interfaces.CheckResourceValidToHandleInterface;
 import io.github.chaogeoop.base.business.mongodb.BaseModel;
 import io.github.chaogeoop.base.business.mongodb.MongoPersistEntity;
@@ -219,9 +219,9 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
     }
 
 
-    public <E extends BaseEs, M extends ISearch<E>> ListPage<E> pageQuery(QueryBuilder queryBuilder, PageSplitter pageSplitter, List<M> judgeKeys) {
+    public <E extends BaseEs, M extends ISearch<E>> ListPage<E> pageQuery(QueryBuilder queryBuilder, EsPageSplitter esPageSplitter, List<M> judgeKeys) {
         if (judgeKeys.isEmpty()) {
-            return ListPage.of(pageSplitter.getOffset(), pageSplitter.getLimit(), 0, new ArrayList<>());
+            return ListPage.of(esPageSplitter.getOffset(), esPageSplitter.getLimit(), 0, new ArrayList<>());
         }
 
         List<EsHelper.EsUnitInfo> esUnitInfos = CollectionHelper.map(judgeKeys, o -> EsHelper.EsUnitInfo.of(o, this.jestClient));
@@ -229,7 +229,7 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
                 o -> BaseEs.getAccordEsNameByData(this.jestClient, o.getBaseEsName(), o.getEsName(), o.getMapping())
         );
 
-        return SimpleSearchHelper.pageQuery(this.jestClient, queryBuilder, pageSplitter, realEsNames, judgeKeys.get(0).giveEsModel());
+        return SimpleSearchHelper.pageQuery(this.jestClient, queryBuilder, esPageSplitter, realEsNames, judgeKeys.get(0).giveEsModel());
     }
 
     public <M extends ISearch<? extends BaseEs>> long count(QueryBuilder queryBuilder, List<M> judgeKeys) {

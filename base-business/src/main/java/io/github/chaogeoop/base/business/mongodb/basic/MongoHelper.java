@@ -1,6 +1,6 @@
 package io.github.chaogeoop.base.business.mongodb.basic;
 
-import io.github.chaogeoop.base.business.common.entities.PageSplitter;
+import io.github.chaogeoop.base.business.common.entities.MongoPageSplitter;
 import io.github.chaogeoop.base.business.common.entities.ListPage;
 import io.github.chaogeoop.base.business.common.helpers.CollectionHelper;
 import org.springframework.data.domain.Sort;
@@ -43,13 +43,13 @@ public class MongoHelper {
     }
 
     public static <T extends RootModel> ListPage<T> pageQuery(
-            MongoOperations mongoTemplate, Query query, List<String> fields, PageSplitter pageSplitter, Class<T> clazz
+            MongoOperations mongoTemplate, Query query, List<String> fields, MongoPageSplitter mongoPageSplitter, Class<T> clazz
     ) {
-        return pageQuery(mongoTemplate, query, fields, pageSplitter, clazz, RootModel.getBaseCollectionNameByClazz(clazz));
+        return pageQuery(mongoTemplate, query, fields, mongoPageSplitter, clazz, RootModel.getBaseCollectionNameByClazz(clazz));
     }
 
     public static <T extends RootModel> ListPage<T> pageQuery(
-            MongoOperations mongoTemplate, Query query, List<String> fields, PageSplitter pageSplitter, Class<T> clazz, String collectionName
+            MongoOperations mongoTemplate, Query query, List<String> fields, MongoPageSplitter mongoPageSplitter, Class<T> clazz, String collectionName
     ) {
         long count = count(mongoTemplate, query, collectionName);
 
@@ -59,17 +59,17 @@ public class MongoHelper {
             }
         }
 
-        Sort sort = pageSplitter.calSort();
+        Sort sort = mongoPageSplitter.getMongoSort();
         if (sort != null) {
             query.with(sort);
         }
 
-        query.skip(pageSplitter.getOffset());
-        query.limit(pageSplitter.getLimit());
+        query.skip(mongoPageSplitter.getOffset());
+        query.limit(mongoPageSplitter.getLimit());
 
         List<T> list = mongoTemplate.find(query, clazz, collectionName);
 
-        return ListPage.of(pageSplitter.getOffset(), pageSplitter.getLimit(), count, list);
+        return ListPage.of(mongoPageSplitter.getOffset(), mongoPageSplitter.getLimit(), count, list);
     }
 
     public static <T extends RootModel> List<T> listQuery(

@@ -2,7 +2,7 @@ package io.github.chaogeoop.base.business.mongodb;
 
 import io.github.chaogeoop.base.business.mongodb.basic.MongoHelper;
 import io.github.chaogeoop.base.business.common.entities.ListPage;
-import io.github.chaogeoop.base.business.common.entities.PageSplitter;
+import io.github.chaogeoop.base.business.common.entities.MongoPageSplitter;
 import com.querydsl.core.types.Predicate;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.query.Query;
@@ -39,22 +39,22 @@ public interface IPrimaryChooseRepository<M extends BaseModel> extends IPrimaryC
         return MongoHelper.count(this.getAccord(), query, PrimaryChooseHelper.getNormalModelWithCheck(this));
     }
 
-    default ListPage<M> pageQuery(Predicate predicate, PageSplitter pageSplitter) {
-        return this.pageQuery(predicate, new ArrayList<>(), pageSplitter);
+    default ListPage<M> pageQuery(Predicate predicate, MongoPageSplitter mongoPageSplitter) {
+        return this.pageQuery(predicate, new ArrayList<>(), mongoPageSplitter);
     }
 
-    default ListPage<M> pageQuery(Predicate predicate, List<String> fields, PageSplitter pageSplitter) {
+    default ListPage<M> pageQuery(Predicate predicate, List<String> fields, MongoPageSplitter mongoPageSplitter) {
         Query query = this.getMongoQueryBuilder().buildQuery(predicate);
 
-        return this.pageQuery(query, fields, pageSplitter);
+        return this.pageQuery(query, fields, mongoPageSplitter);
     }
 
-    default ListPage<M> pageQuery(Query query, PageSplitter pageSplitter) {
-        return this.pageQuery(query, new ArrayList<>(), pageSplitter);
+    default ListPage<M> pageQuery(Query query, MongoPageSplitter mongoPageSplitter) {
+        return this.pageQuery(query, new ArrayList<>(), mongoPageSplitter);
     }
 
-    default ListPage<M> pageQuery(Query query, List<String> fields, PageSplitter pageSplitter) {
-        return MongoHelper.pageQuery(this.getAccord(), query, fields, pageSplitter, PrimaryChooseHelper.getNormalModelWithCheck(this));
+    default ListPage<M> pageQuery(Query query, List<String> fields, MongoPageSplitter mongoPageSplitter) {
+        return MongoHelper.pageQuery(this.getAccord(), query, fields, mongoPageSplitter, PrimaryChooseHelper.getNormalModelWithCheck(this));
     }
 
     default List<M> listQuery(Predicate predicate, Sort sort) {
