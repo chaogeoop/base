@@ -2,7 +2,6 @@ package io.github.chaogeoop.base.example.app.services;
 
 import io.github.chaogeoop.base.business.elasticsearch.*;
 import io.github.chaogeoop.base.business.mongodb.MongoPersistEntity;
-import io.github.chaogeoop.base.example.repository.es.EsTestInEs;
 import io.github.chaogeoop.base.example.common.dao.EsTestDao;
 import io.github.chaogeoop.base.example.repository.domains.EsTest;
 import com.google.common.collect.Lists;
@@ -27,7 +26,7 @@ public class EsService {
     public List<EsTest> findTest(EsTestFinder obj) {
         Query query = this.esTestDao.getMongoQueryBuilder().buildQuery(obj.getQuery());
 
-        EsHelper.SearchInput searchInput = EsHelper.SearchInput.of(query, obj.getWord(), EsTestInEs.class);
+        EsHelper.SearchInput searchInput = EsHelper.SearchInput.of(query, obj.getWord(), EsTest.class);
 
         return this.esTestDao.search(this.esProvider, searchInput, Lists.newArrayList(obj.getFamilyId()));
     }
@@ -40,21 +39,13 @@ public class EsService {
         }
     }
 
-    public MongoPersistEntity.PersistEntity inputAndSave(EsTestInput input) {
+    public MongoPersistEntity.PersistEntity inputAndSave(EsTest input) {
         MongoPersistEntity.PersistEntity persistEntity = new MongoPersistEntity.PersistEntity();
 
         long uid = this.esTestDao.getMongoIdEntity().nextUid();
+        input.setUid(uid);
 
-        EsTest data = new EsTest();
-
-        data.setFamilyId(input.getFamilyId());
-        data.setUid(uid);
-        data.setName(input.getName());
-        data.setTagIds(input.getTagIds());
-        data.setAddress(input.getAddress());
-        data.setAddressList(input.getAddressList());
-
-        persistEntity.getDatabase().insert(data);
+        persistEntity.getDatabase().insert(input);
 
         return persistEntity;
     }

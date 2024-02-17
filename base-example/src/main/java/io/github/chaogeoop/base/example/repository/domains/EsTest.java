@@ -1,38 +1,46 @@
 package io.github.chaogeoop.base.example.repository.domains;
 
-import com.google.common.collect.Lists;
+import io.github.chaogeoop.base.business.elasticsearch.EsField;
+import io.github.chaogeoop.base.business.elasticsearch.EsTypeEnum;
+import io.github.chaogeoop.base.business.elasticsearch.IBaseEs;
 import io.github.chaogeoop.base.business.elasticsearch.ISearch;
 import io.github.chaogeoop.base.business.mongodb.BaseModel;
 import io.github.chaogeoop.base.business.mongodb.ISplitCollection;
-import io.github.chaogeoop.base.example.repository.es.EsTestInEs;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
 @Setter
 @Getter
 @Document("estests")
-public class EsTest extends BaseModel implements ISplitCollection, ISearch<EsTestInEs> {
+//@EsTableName("estestines")
+public class EsTest extends BaseModel implements ISplitCollection, IBaseEs, ISearch<EsTest> {
     @Indexed
+    @EsField(type = EsTypeEnum.LONG)
     private Long familyId;
 
     @Indexed(unique = true)
+    @EsField(type = EsTypeEnum.LONG)
     private Long uid;
 
+    @EsField(type = EsTypeEnum.TEXT)
     private String name;
 
+    @EsField(type = EsTypeEnum.LONG)
     private List<Long> tagIds;
 
+    @EsField(type = EsTypeEnum.OBJECT, objectType = Address.class)
     private Address address;
 
-    private List<Address> addressList = new ArrayList<>();
-
+    @EsField(type = EsTypeEnum.DATE)
     private Date created = new Date();
+
+    @EsField(type = EsTypeEnum.NESTED, objectType = Father.class)
+    private List<Father> fathers;
 
     @Override
     public String calSplitIndex() {
@@ -42,42 +50,59 @@ public class EsTest extends BaseModel implements ISplitCollection, ISearch<EsTes
     }
 
     @Override
-    public Class<EsTestInEs> giveEsModel() {
-        return EsTestInEs.class;
+    public Class<EsTest> giveEsModel() {
+        return EsTest.class;
     }
 
     @Override
-    public EsTestInEs giveEsData() {
-        EsTestInEs esData = new EsTestInEs();
-
-        esData.setFamilyId(this.familyId);
-        esData.setUid(this.uid);
-        esData.setName(this.name);
-        esData.setTagIds(this.tagIds);
-
-        EsTestInEs.Child child = new EsTestInEs.Child();
-        child.setName("儿子");
-        child.setNickname("崽崽");
-
-        EsTestInEs.Outer outer = new EsTestInEs.Outer();
-        outer.setChildren(Lists.newArrayList(child));
-
-        EsTestInEs.Father father = new EsTestInEs.Father();
-        father.setName("父亲");
-        father.setNickname("爸爸");
-        father.setOuter(outer);
-
-        esData.setFathers(Lists.newArrayList(father));
-
-        return esData;
+    public EsTest giveEsData() {
+        return this;
     }
 
     @Setter
     @Getter
     public static class Address {
+        @EsField(type = EsTypeEnum.TEXT, textHasKeywordField = true)
         private String country;
 
+        @EsField(type = EsTypeEnum.KEYWORD)
         private String province;
+
+        @EsField(type = EsTypeEnum.OBJECT, objectType = Address.class)
+        private Address address;
+
+        @EsField(type = EsTypeEnum.NESTED, objectType = Address.class)
+        private List<Address> addressList;
+    }
+
+    @Setter
+    @Getter
+    public static class Father {
+        @EsField(type = EsTypeEnum.TEXT, textHasKeywordField = true)
+        private String name;
+
+        @EsField(type = EsTypeEnum.TEXT, textHasKeywordField = true)
+        private String nickname;
+
+        @EsField(type = EsTypeEnum.OBJECT, objectType = Outer.class)
+        private Outer outer;
+    }
+
+    @Setter
+    @Getter
+    public static class Outer {
+        @EsField(type = EsTypeEnum.NESTED, objectType = Child.class)
+        private List<Child> children;
+    }
+
+    @Setter
+    @Getter
+    public static class Child {
+        @EsField(type = EsTypeEnum.TEXT, textHasKeywordField = true)
+        private String name;
+
+        @EsField(type = EsTypeEnum.TEXT, textHasKeywordField = true)
+        private String nickname;
     }
 
     public static EsTest splitKeyOf(Long familyId) {

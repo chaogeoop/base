@@ -33,7 +33,7 @@ public class EsController {
     @DatabaseAction(action = DatabaseActionEnum.WRITTEN_SOON_READ)
     public HttpResult<Boolean> buildIndex(
             @UserInfo UserContext userContext,
-            @RequestBody EsService.EsTestInput input
+            @RequestBody EsTest input
     ) {
         MongoPersistEntity.PersistEntity persistEntity = this.esService.inputAndSave(input);
 

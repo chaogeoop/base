@@ -10,7 +10,6 @@ import io.github.chaogeoop.base.business.common.entities.ListPage;
 import io.github.chaogeoop.base.business.common.helpers.CollectionHelper;
 import io.github.chaogeoop.base.example.repository.domains.EsTest;
 import io.github.chaogeoop.base.example.repository.domains.QEsTest;
-import io.github.chaogeoop.base.example.repository.es.EsTestInEs;
 import com.querydsl.core.BooleanBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.index.query.BoolQueryBuilder;
@@ -104,8 +103,8 @@ public class EsTestDao implements ISplitPrimaryChooseRepository<EsTest> {
 
         List<EsTest> splitKeys = CollectionHelper.map(familyIds, EsTest::splitKeyOf);
 
-        ListPage<EsTestInEs> esDataPage = esProvider.pageQuery(mainQuery, esPageSplitter, splitKeys);
-        List<Long> accordIds = CollectionHelper.map(esDataPage.getList(), EsTestInEs::getUid);
+        ListPage<EsTest> esDataPage = esProvider.pageQuery(mainQuery, esPageSplitter, splitKeys);
+        List<Long> accordIds = CollectionHelper.map(esDataPage.getList(), EsTest::getUid);
 
         return this.findByIds(accordIds, familyIds);
     }
