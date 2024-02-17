@@ -10,6 +10,7 @@ import com.google.common.collect.Sets;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.index.*;
@@ -209,52 +210,47 @@ public class BaseModel extends RootModel {
     private static List<Index> getIndexList(Class<? extends BaseModel> clazz) {
         List<Index> list = new ArrayList<>();
 
-        for (java.lang.reflect.Field field : clazz.getDeclaredFields()) {
-            field.setAccessible(true);
-
-            boolean hasIndex = field.isAnnotationPresent(Indexed.class);
-            if (!hasIndex) {
-                continue;
-            }
-
-            Indexed indexAnnotation = field.getAnnotation(Indexed.class);
-
-            String name = field.getName();
-            if (field.isAnnotationPresent(Field.class)) {
-                name = field.getAnnotation(Field.class).name();
-            }
-
-            Sort.Direction direction = Sort.Direction.ASC;
-            if (IndexDirection.DESCENDING.equals(indexAnnotation.direction())) {
-                direction = Sort.Direction.DESC;
-            }
-
-            Index index = new Index();
-
-            index.on(name, direction);
-            index.named(name);
-            if (indexAnnotation.background()) {
-                index.background();
-            }
-            if (indexAnnotation.unique()) {
-                index.unique();
-            }
-
-            list.add(index);
-        }
-
         List<CompoundIndex> compoundIndexList = new ArrayList<>();
-
-        if (clazz.isAnnotationPresent(CompoundIndexes.class)) {
-            compoundIndexList.addAll(Lists.newArrayList(clazz.getAnnotation(CompoundIndexes.class).value()));
-        }
-
-        if (clazz.isAnnotationPresent(CompoundIndex.class)) {
-            compoundIndexList.add(clazz.getAnnotation(CompoundIndex.class));
-        }
 
         Class<?> checkClazz = clazz;
         do {
+            for (java.lang.reflect.Field field : checkClazz.getDeclaredFields()) {
+                field.setAccessible(true);
+
+                boolean hasIndex = field.isAnnotationPresent(Indexed.class);
+                if (!hasIndex) {
+                    continue;
+                }
+
+                Indexed indexAnnotation = field.getAnnotation(Indexed.class);
+
+                String name = field.getName();
+                if (field.isAnnotationPresent(Field.class)) {
+                    name = field.getAnnotation(Field.class).name();
+                    if (StringUtils.isBlank(name)) {
+                        name = field.getAnnotation(Field.class).value();
+                    }
+                }
+
+                Sort.Direction direction = Sort.Direction.ASC;
+                if (IndexDirection.DESCENDING.equals(indexAnnotation.direction())) {
+                    direction = Sort.Direction.DESC;
+                }
+
+                Index index = new Index();
+
+                index.on(name, direction);
+                index.named(name);
+                if (indexAnnotation.background()) {
+                    index.background();
+                }
+                if (indexAnnotation.unique()) {
+                    index.unique();
+                }
+
+                list.add(index);
+            }
+
             if (checkClazz.isAnnotationPresent(CompoundIndexes.class)) {
                 compoundIndexList.addAll(Lists.newArrayList(checkClazz.getAnnotation(CompoundIndexes.class).value()));
             }

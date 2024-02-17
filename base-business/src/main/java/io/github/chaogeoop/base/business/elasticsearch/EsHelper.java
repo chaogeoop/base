@@ -522,22 +522,28 @@ public class EsHelper {
 
         private void buildTree(FieldNode parent, Class<?> clazz) {
             this.tailNodes.remove(parent);
-            for (Field field : clazz.getDeclaredFields()) {
-                FieldDetail detail = FieldDetail.of(field);
-                if (detail == null) {
-                    continue;
+
+            Class<?> checkClazz = clazz;
+            do {
+                for (Field field : clazz.getDeclaredFields()) {
+                    FieldDetail detail = FieldDetail.of(field);
+                    if (detail == null) {
+                        continue;
+                    }
+
+                    FieldNode sonNode = parent.addChildren(detail);
+                    if (sonNode == null) {
+                        continue;
+                    }
+
+                    this.tailNodes.add(sonNode);
+                    if (EsTypeEnum.HAS_OBJECT_TYPES.contains(detail.getEsField().type())) {
+                        this.buildTree(sonNode, detail.getEsField().objectType());
+                    }
                 }
 
-                FieldNode sonNode = parent.addChildren(detail);
-                if (sonNode == null) {
-                    continue;
-                }
-
-                this.tailNodes.add(sonNode);
-                if (EsTypeEnum.HAS_OBJECT_TYPES.contains(detail.getEsField().type())) {
-                    this.buildTree(sonNode, detail.getEsField().objectType());
-                }
-            }
+                checkClazz = checkClazz.getSuperclass();
+            } while (!Object.class.equals(checkClazz));
         }
     }
 
