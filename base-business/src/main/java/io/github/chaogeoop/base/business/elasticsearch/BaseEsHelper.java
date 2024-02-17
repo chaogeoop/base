@@ -1,7 +1,7 @@
 package io.github.chaogeoop.base.business.elasticsearch;
 
-import io.github.chaogeoop.base.business.common.errors.BizException;
 import com.google.common.collect.Sets;
+import io.github.chaogeoop.base.business.common.errors.BizException;
 import io.searchbox.client.JestClient;
 import io.searchbox.client.JestResult;
 import io.searchbox.indices.CreateIndex;
@@ -18,7 +18,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
-public class BaseEs {
+public class BaseEsHelper {
     private static final ConcurrentHashMap<EsUnit, Set<String>> esUnitEsNamesMap = new ConcurrentHashMap<>();
 
     private static final ConcurrentHashMap<EsUnit, String> esUnitMappingMap = new ConcurrentHashMap<>();
@@ -41,7 +41,7 @@ public class BaseEs {
         return Sets.newHashSet(esUnitEsNamesMap.getOrDefault(esUnit, new HashSet<>()));
     }
 
-    protected static void deleteIndex(JestClient jestClient, Class<? extends ISearch<? extends BaseEs>> clazz) {
+    protected static void deleteIndex(JestClient jestClient, Class<? extends ISearch<? extends IBaseEs>> clazz) {
         EsHelper.InitEsUnit initEsUnit = EsHelper.InitEsUnit.of(clazz);
         EsUnit esUnit = EsUnit.of(jestClient, initEsUnit.getBaseEsName());
         Set<String> esNames = Sets.newHashSet(esUnitEsNamesMap.getOrDefault(esUnit, new HashSet<>()));

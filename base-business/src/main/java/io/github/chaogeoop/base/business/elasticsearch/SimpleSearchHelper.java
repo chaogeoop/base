@@ -58,7 +58,7 @@ public class SimpleSearchHelper {
         }
     }
 
-    public static <M extends BaseEs> ListPage<M> pageQuery(
+    public static <M extends IBaseEs> ListPage<M> pageQuery(
             JestClient jestClient, QueryBuilder queryBuilder, EsPageSplitter esPageSplitter, Set<String> indicates, Class<M> clazz
     ) {
         if (indicates.isEmpty()) {

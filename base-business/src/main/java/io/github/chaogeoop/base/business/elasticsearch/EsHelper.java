@@ -30,14 +30,14 @@ public class EsHelper {
 
     private static final List<String> regexOperators = Lists.newArrayList("$regex", "$options");
 
-    private static final ConcurrentHashMap<Class<? extends BaseEs>, Map<String, Object>> esMappingMap = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<Class<? extends IBaseEs>, Map<String, Object>> esMappingMap = new ConcurrentHashMap<>();
 
-    private static final ConcurrentHashMap<Class<? extends BaseEs>, TextAndNestedInfo> esTextAndNestedInfoMap = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<Class<? extends IBaseEs>, TextAndNestedInfo> esTextAndNestedInfoMap = new ConcurrentHashMap<>();
 
     private static final Map<String, Map<String, String>> textKeywordField = Map.of("keyword", Map.of("type", "keyword"));
 
-    public static <K extends ISearch<? extends BaseEs>> String getBaseEsName(K data) {
-        Class<? extends BaseEs> esClazz = data.giveEsModel();
+    public static <K extends ISearch<? extends IBaseEs>> String getBaseEsName(K data) {
+        Class<? extends IBaseEs> esClazz = data.giveEsModel();
 
         if (esClazz.isAnnotationPresent(EsTableName.class)) {
             return esClazz.getAnnotation(EsTableName.class).value();
@@ -337,7 +337,7 @@ public class EsHelper {
         }
     }
 
-    public static Map<String, Object> getMapping(Class<? extends BaseEs> clazz) {
+    public static Map<String, Object> getMapping(Class<? extends IBaseEs> clazz) {
         Map<String, Object> mapping = esMappingMap.get(clazz);
         if (mapping != null) {
             return Maps.newHashMap(mapping);
@@ -349,7 +349,7 @@ public class EsHelper {
         return Maps.newHashMap(esMappingMap.get(clazz));
     }
 
-    public static TextAndNestedInfo getTextAndNestedInfo(Class<? extends BaseEs> clazz) {
+    public static TextAndNestedInfo getTextAndNestedInfo(Class<? extends IBaseEs> clazz) {
         TextAndNestedInfo textAndNestedInfo = esTextAndNestedInfoMap.get(clazz);
         if (textAndNestedInfo != null) {
             return textAndNestedInfo.giveCopy();
@@ -389,14 +389,14 @@ public class EsHelper {
     }
 
     public static class EsClazzEntity {
-        private final Class<? extends BaseEs> clazz;
+        private final Class<? extends IBaseEs> clazz;
         private final FieldNode root;
         private final Set<FieldNode> tailNodes = new HashSet<>();
         private final Set<FieldNode> tailTextNodes = new HashSet<>();
         private final Set<FieldNode> tailTermNodes = new HashSet<>();
 
 
-        public EsClazzEntity(Class<? extends BaseEs> inputClazz) {
+        public EsClazzEntity(Class<? extends IBaseEs> inputClazz) {
             this.clazz = inputClazz;
             this.root = FieldNode.of(null, null);
             this.buildTree(this.root, inputClazz);
@@ -669,7 +669,7 @@ public class EsHelper {
             return mainQuery;
         }
 
-        public static SearchInput of(Query query, String word, Class<? extends BaseEs> clazz) {
+        public static SearchInput of(Query query, String word, Class<? extends IBaseEs> clazz) {
             TextAndNestedInfo textAndNestedInfo = EsHelper.getTextAndNestedInfo(clazz);
 
             BoolQueryBuilder boolQueryBuilder = new BoolQueryBuilder().minimumShouldMatch(1);
@@ -705,7 +705,7 @@ public class EsHelper {
         }
     }
 
-    private static class EsInfoEntity<K extends ISearch<? extends BaseEs>> {
+    private static class EsInfoEntity<K extends ISearch<? extends IBaseEs>> {
         private final K data;
         private final String baseEsName;
         private final String accordEsName;
@@ -717,7 +717,7 @@ public class EsHelper {
         }
 
         private String calAccordEsName() {
-            Class<? extends BaseEs> esClazz = this.data.giveEsModel();
+            Class<? extends IBaseEs> esClazz = this.data.giveEsModel();
 
             if (esClazz.isAnnotationPresent(EsTableName.class)) {
                 return esClazz.getAnnotation(EsTableName.class).value();
@@ -733,14 +733,14 @@ public class EsHelper {
         }
 
         private String getMapping(JestClient jestClient) {
-            String mapping = BaseEs.getMappingFromCache(jestClient, this.baseEsName);
+            String mapping = BaseEsHelper.getMappingFromCache(jestClient, this.baseEsName);
             if (mapping != null) {
                 return mapping;
             }
 
             mapping = JsonHelper.writeValueAsString(EsHelper.getMapping(this.data.giveEsModel()));
 
-            BaseEs.getAccordEsNameByData(jestClient, this.baseEsName, this.accordEsName, mapping);
+            BaseEsHelper.getAccordEsNameByData(jestClient, this.baseEsName, this.accordEsName, mapping);
 
             return mapping;
         }
@@ -765,7 +765,7 @@ public class EsHelper {
 
         private String mapping;
 
-        public static <M extends ISearch<? extends BaseEs>> EsUnitInfo of(M judge, JestClient jestClient) {
+        public static <M extends ISearch<? extends IBaseEs>> EsUnitInfo of(M judge, JestClient jestClient) {
             EsInfoEntity<M> entity = new EsInfoEntity<>(judge);
 
             return entity.getInfo(jestClient);
@@ -790,14 +790,14 @@ public class EsHelper {
     public static class InitEsUnit {
         private String baseEsName;
 
-        private Class<? extends BaseEs> esClazz;
+        private Class<? extends IBaseEs> esClazz;
 
         private String mapping;
 
-        public static InitEsUnit of(Class<? extends ISearch<? extends BaseEs>> clazz) {
+        public static InitEsUnit of(Class<? extends ISearch<? extends IBaseEs>> clazz) {
             InitEsUnit result = new InitEsUnit();
 
-            ISearch<? extends BaseEs> data;
+            ISearch<? extends IBaseEs> data;
             try {
                 data = clazz.getDeclaredConstructor().newInstance();
             } catch (Exception e) {

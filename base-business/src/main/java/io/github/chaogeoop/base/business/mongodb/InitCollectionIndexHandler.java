@@ -16,11 +16,11 @@ import java.util.function.Function;
 
 public class InitCollectionIndexHandler {
     private final List<IPrimaryChoose<? extends BaseModel>> daoList;
-    private final Set<Class<? extends ISearch<? extends BaseEs>>> searchClazzList;
+    private final Set<Class<? extends ISearch<? extends IBaseEs>>> searchClazzList;
     private final Map<MongoTemplate, JestClient> databaseEsMap = new HashMap<>();
 
     public InitCollectionIndexHandler(
-            List<IPrimaryChoose<? extends BaseModel>> daoList, Set<Class<? extends ISearch<? extends BaseEs>>> searchClazzList,
+            List<IPrimaryChoose<? extends BaseModel>> daoList, Set<Class<? extends ISearch<? extends IBaseEs>>> searchClazzList,
             List<EsProvider> esProviders
     ) {
         this.daoList = daoList;
@@ -62,7 +62,7 @@ public class InitCollectionIndexHandler {
         this.init(executorService, mongoInitUnitList, unit -> BaseModel.getAccordCollectionNamePreInit(unit.getMongoTemplate(), unit.getClazz(), unit.getCollectionName()));
 
         List<EsInitUnit> esInitUnitList = new ArrayList<>();
-        for (Class<? extends ISearch<? extends BaseEs>> clazz : this.searchClazzList) {
+        for (Class<? extends ISearch<? extends IBaseEs>> clazz : this.searchClazzList) {
             if (!BaseModel.class.isAssignableFrom(clazz)) {
                 continue;
             }
@@ -98,7 +98,7 @@ public class InitCollectionIndexHandler {
                 }
             }
         }
-        this.init(executorService, esInitUnitList, unit -> BaseEs.getAccordEsNamePreInit(unit.getJestClient(), unit.getBaseEsName(), unit.getEsName(), unit.getMapping()));
+        this.init(executorService, esInitUnitList, unit -> BaseEsHelper.getAccordEsNamePreInit(unit.getJestClient(), unit.getBaseEsName(), unit.getEsName(), unit.getMapping()));
 
         executorService.shutdown();
     }

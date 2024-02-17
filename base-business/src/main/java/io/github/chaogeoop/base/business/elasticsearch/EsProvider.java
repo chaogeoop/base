@@ -91,11 +91,11 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
                     continue;
                 }
 
-                EsHelper.EsUnitInfo esUnitInfo = EsHelper.EsUnitInfo.of((ISearch<? extends BaseEs>) entry.getValue().get(0), this.jestClient);
+                EsHelper.EsUnitInfo esUnitInfo = EsHelper.EsUnitInfo.of((ISearch<? extends IBaseEs>) entry.getValue().get(0), this.jestClient);
                 esUnitInfoSet.add(esUnitInfo);
 
                 for (BaseModel obj : entry.getValue()) {
-                    BaseEs esData = ((ISearch<? extends BaseEs>) obj).giveEsData();
+                    IBaseEs esData = ((ISearch<? extends IBaseEs>) obj).giveEsData();
                     if (esData == null) {
                         continue;
                     }
@@ -131,7 +131,7 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
             @Override
             public void send() {
                 for (EsHelper.EsUnitInfo esUnit : esUnitInfoSet) {
-                    BaseEs.getAccordEsNameByData(jestClient, esUnit.getBaseEsName(), esUnit.getEsName(), esUnit.getMapping());
+                    BaseEsHelper.getAccordEsNameByData(jestClient, esUnit.getBaseEsName(), esUnit.getEsName(), esUnit.getMapping());
                 }
 
                 esSyncSender.apply(list);
@@ -194,7 +194,7 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
     }
 
     private <M extends SyncLog> void syncToEs(M log) {
-        String realEsName = BaseEs.getAccordEsNameByData(this.jestClient, log.getBaseEsName(), log.getEsName(), log.getMapping());
+        String realEsName = BaseEsHelper.getAccordEsNameByData(this.jestClient, log.getBaseEsName(), log.getEsName(), log.getMapping());
 
         if (ActionEnum.DELETE.equals(log.getAction())) {
             SimpleSearchHelper.deleteData(this.jestClient, realEsName, log.getUniqueId());
@@ -219,35 +219,35 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
     }
 
 
-    public <E extends BaseEs, M extends ISearch<E>> ListPage<E> pageQuery(QueryBuilder queryBuilder, EsPageSplitter esPageSplitter, List<M> judgeKeys) {
+    public <E extends IBaseEs, M extends ISearch<E>> ListPage<E> pageQuery(QueryBuilder queryBuilder, EsPageSplitter esPageSplitter, List<M> judgeKeys) {
         if (judgeKeys.isEmpty()) {
             return ListPage.of(esPageSplitter.getOffset(), esPageSplitter.getLimit(), 0, new ArrayList<>());
         }
 
         List<EsHelper.EsUnitInfo> esUnitInfos = CollectionHelper.map(judgeKeys, o -> EsHelper.EsUnitInfo.of(o, this.jestClient));
         Set<String> realEsNames = CollectionHelper.map(Sets.newHashSet(esUnitInfos),
-                o -> BaseEs.getAccordEsNameByData(this.jestClient, o.getBaseEsName(), o.getEsName(), o.getMapping())
+                o -> BaseEsHelper.getAccordEsNameByData(this.jestClient, o.getBaseEsName(), o.getEsName(), o.getMapping())
         );
 
         return SimpleSearchHelper.pageQuery(this.jestClient, queryBuilder, esPageSplitter, realEsNames, judgeKeys.get(0).giveEsModel());
     }
 
-    public <M extends ISearch<? extends BaseEs>> long count(QueryBuilder queryBuilder, List<M> judgeKeys) {
+    public <M extends ISearch<? extends IBaseEs>> long count(QueryBuilder queryBuilder, List<M> judgeKeys) {
         if (judgeKeys.isEmpty()) {
             return 0;
         }
 
         List<EsHelper.EsUnitInfo> esUnitInfos = CollectionHelper.map(judgeKeys, o -> EsHelper.EsUnitInfo.of(o, this.jestClient));
         Set<String> realEsNames = CollectionHelper.map(Sets.newHashSet(esUnitInfos),
-                o -> BaseEs.getAccordEsNameByData(this.jestClient, o.getBaseEsName(), o.getEsName(), o.getMapping())
+                o -> BaseEsHelper.getAccordEsNameByData(this.jestClient, o.getBaseEsName(), o.getEsName(), o.getMapping())
         );
 
         return SimpleSearchHelper.count(this.jestClient, queryBuilder, realEsNames);
     }
 
     //不建议使用,只是为了单机测试
-    public void deleteIndex(Class<? extends ISearch<? extends BaseEs>> clazz) {
-        BaseEs.deleteIndex(this.jestClient, clazz);
+    public void deleteIndex(Class<? extends ISearch<? extends IBaseEs>> clazz) {
+        BaseEsHelper.deleteIndex(this.jestClient, clazz);
     }
 
     @Setter

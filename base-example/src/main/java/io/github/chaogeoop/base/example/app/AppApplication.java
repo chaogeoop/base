@@ -1,6 +1,6 @@
 package io.github.chaogeoop.base.example.app;
 
-import io.github.chaogeoop.base.business.elasticsearch.BaseEs;
+import io.github.chaogeoop.base.business.elasticsearch.IBaseEs;
 import io.github.chaogeoop.base.business.elasticsearch.EsProvider;
 import io.github.chaogeoop.base.business.elasticsearch.ISearch;
 import io.github.chaogeoop.base.business.mongodb.BaseModel;
@@ -28,7 +28,7 @@ public class AppApplication {
 
     @Bean
     public void databaseInit() {
-        Set<Class<? extends ISearch<? extends BaseEs>>> searchClazzList = new HashSet<>();
+        Set<Class<? extends ISearch<? extends IBaseEs>>> searchClazzList = new HashSet<>();
 
         ClassPathScanningCandidateComponentProvider provider = new ClassPathScanningCandidateComponentProvider(false);
         provider.addIncludeFilter(new AssignableTypeFilter(ISearch.class));
@@ -37,7 +37,7 @@ public class AppApplication {
         for (BeanDefinition son : components) {
             try {
                 Class<?> aClass = Class.forName(son.getBeanClassName());
-                searchClazzList.add((Class<? extends ISearch<? extends BaseEs>>) aClass);
+                searchClazzList.add((Class<? extends ISearch<? extends IBaseEs>>) aClass);
             } catch (ClassNotFoundException e) {
                 e.printStackTrace();
             }

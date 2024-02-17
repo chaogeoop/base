@@ -1,16 +1,14 @@
 package io.github.chaogeoop.base.example.repository.es;
 
-import io.github.chaogeoop.base.business.elasticsearch.BaseEs;
+import io.github.chaogeoop.base.business.elasticsearch.IBaseEs;
 import io.github.chaogeoop.base.business.elasticsearch.EsField;
 import io.github.chaogeoop.base.business.elasticsearch.EsTypeEnum;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.google.common.collect.Lists;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.Date;
 import java.util.List;
 
 @Setter
@@ -19,7 +17,7 @@ import java.util.List;
 @JsonInclude(value = JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 //@EsTableName("estestines")
-public class EsTestInEs extends BaseEs {
+public class EsTestInEs implements IBaseEs {
     @EsField(type = EsTypeEnum.LONG)
     private Long familyId;
 

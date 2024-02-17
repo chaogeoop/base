@@ -33,9 +33,9 @@ public class EsService {
     }
 
     public void deleteIndexList() {
-        List<Class<? extends ISearch<? extends BaseEs>>> clazzList = Lists.newArrayList(EsTest.class);
+        List<Class<? extends ISearch<? extends IBaseEs>>> clazzList = Lists.newArrayList(EsTest.class);
 
-        for (Class<? extends ISearch<? extends BaseEs>> clazz : clazzList) {
+        for (Class<? extends ISearch<? extends IBaseEs>> clazz : clazzList) {
             this.esProvider.deleteIndex(clazz);
         }
     }
