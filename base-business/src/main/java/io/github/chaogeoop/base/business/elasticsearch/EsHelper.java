@@ -1,7 +1,6 @@
 package io.github.chaogeoop.base.business.elasticsearch;
 
 import com.google.common.collect.Sets;
-import io.github.chaogeoop.base.business.common.helpers.CollectionHelper;
 import io.github.chaogeoop.base.business.mongodb.BaseModel;
 import io.github.chaogeoop.base.business.mongodb.ISplitCollection;
 import io.github.chaogeoop.base.business.mongodb.SplitCollectionHelper;
@@ -12,11 +11,14 @@ import com.google.common.collect.Maps;
 import io.searchbox.client.JestClient;
 import lombok.Getter;
 import lombok.Setter;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.lucene.search.join.ScoreMode;
 import org.bson.BsonRegularExpression;
 import org.bson.Document;
 import org.elasticsearch.index.query.*;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 
 import javax.annotation.Nullable;
 import java.lang.reflect.Field;
@@ -458,36 +460,23 @@ public class EsHelper {
             data.setNestedTermFieldPathMap(this.getNestedTermFieldPathMap());
 
             for (FieldNode node : this.tailTextNodes) {
-                boolean textHasKeywordField = node.getDetail().getEsField().textHasKeywordField();
+                List<FieldNode> list = this.buildNodeChain(node);
 
-                List<FieldNode> list = this.buildDescNodeChain(node);
-                if (list.size() == 1) {
-                    String fieldName = list.get(0).getDetail().getFieldName();
+                Pair<String, List<String>> pair = FieldNode.getFiledNestedPathListPair(list);
+                String fieldName = pair.getLeft();
+                List<String> nestedPathList = pair.getRight();
 
+                if (node.getDetail().getEsField().textHasKeywordField()) {
+                    data.getHasKeywordTextFields().add(fieldName);
+                }
+
+                if (nestedPathList.isEmpty()) {
                     data.getTextFields().add(fieldName);
-                    if (textHasKeywordField) {
-                        data.getHasKeywordTextFields().add(fieldName);
-                    }
                     continue;
                 }
 
-                Collections.reverse(list);
-
-                String withPointField = this.getWithPointField(list);
-                if (textHasKeywordField) {
-                    data.getHasKeywordTextFields().add(withPointField);
-                }
-
-                List<FieldNode> nestedNodes = CollectionHelper.find(list, o -> EsTypeEnum.NESTED.equals(o.getDetail().getEsField().type()));
-                if (nestedNodes.isEmpty()) {
-                    data.getTextFields().add(withPointField);
-                    continue;
-                }
-
-                String path = this.getPath(list);
-                data.getNestedTextFieldPathMap().put(withPointField, path);
+                data.getNestedTextFieldPathMap().put(fieldName, nestedPathList.get(nestedPathList.size() - 1));
             }
-
 
             return data;
         }
@@ -496,57 +485,35 @@ public class EsHelper {
             Map<String, String> map = new HashMap<>();
 
             for (FieldNode node : this.tailTermNodes) {
-                List<FieldNode> list = this.buildDescNodeChain(node);
-                if (list.size() == 1) {
+                List<FieldNode> list = this.buildNodeChain(node);
+
+                Pair<String, List<String>> pair = FieldNode.getFiledNestedPathListPair(list);
+                String fieldName = pair.getLeft();
+                List<String> nestedPathList = pair.getRight();
+
+                if (nestedPathList.isEmpty()) {
                     continue;
                 }
 
-                List<FieldNode> nestedNodes = CollectionHelper.find(list, o -> EsTypeEnum.NESTED.equals(o.getDetail().getEsField().type()));
-                if (nestedNodes.isEmpty()) {
-                    continue;
-                }
-
-                Collections.reverse(list);
-
-                String nestedField = this.getWithPointField(list);
-                String path = this.getPath(list);
-
-                map.put(nestedField, path);
+                map.put(fieldName, nestedPathList.get(nestedPathList.size() - 1));
             }
 
             return map;
         }
 
-        private List<FieldNode> buildDescNodeChain(FieldNode node) {
+        private List<FieldNode> buildNodeChain(FieldNode tailNode) {
             List<FieldNode> list = new ArrayList<>();
-            list.add(node);
+            list.add(tailNode);
 
-            FieldNode parentNode = node.getParentNode();
+            FieldNode parentNode = tailNode.getParentNode();
             while (parentNode != this.root) {
                 list.add(parentNode);
                 parentNode = parentNode.getParentNode();
             }
 
+            Collections.reverse(list);
+
             return list;
-        }
-
-        private String getWithPointField(List<FieldNode> list) {
-            List<String> fieldNames = CollectionHelper.map(list, o -> o.getDetail().getFieldName());
-            return String.join(".", fieldNames);
-        }
-
-        private String getPath(List<FieldNode> hasNestedList) {
-            StringBuilder pathBuilder = new StringBuilder();
-            for (FieldNode tmp : hasNestedList) {
-                pathBuilder.append(tmp.getDetail().getFieldName());
-                pathBuilder.append(".");
-                if (EsTypeEnum.NESTED.equals(tmp.getDetail().getEsField().type())) {
-                    break;
-                }
-            }
-            pathBuilder.deleteCharAt(pathBuilder.length() - 1);
-
-            return pathBuilder.toString();
         }
 
         private void buildTree(FieldNode parent, Class<?> clazz) {
@@ -664,6 +631,24 @@ public class EsHelper {
 
             return data;
         }
+
+        public static Pair<String, List<String>> getFiledNestedPathListPair(List<FieldNode> list) {
+            List<String> pathList = new ArrayList<>();
+
+            StringBuilder fieldBuilder = new StringBuilder();
+            for (FieldNode tmp : list) {
+                fieldBuilder.append(tmp.getDetail().getFieldName());
+                if (EsTypeEnum.NESTED.equals(tmp.getDetail().getEsField().type())) {
+                    String path = fieldBuilder.toString();
+                    pathList.add(path);
+                }
+                fieldBuilder.append(".");
+            }
+
+            String field = fieldBuilder.deleteCharAt(fieldBuilder.length() - 1).toString();
+
+            return Pair.of(field, pathList);
+        }
     }
 
     @Getter
@@ -695,10 +680,20 @@ public class EsHelper {
                 boolQueryBuilder.should(new MultiMatchQueryBuilder(word, fields).minimumShouldMatch("3<75%"));
             }
 
+            MultiValueMap<String, String> nestedPathTextFieldsMap = new LinkedMultiValueMap<>();
             for (Map.Entry<String, String> entry : textAndNestedInfo.getNestedTextFieldPathMap().entrySet()) {
-                MatchQueryBuilder temp = new MatchQueryBuilder(entry.getKey(), word).minimumShouldMatch("3<75%");
+                nestedPathTextFieldsMap.add(entry.getValue(), entry.getKey());
+            }
 
-                boolQueryBuilder.should(new NestedQueryBuilder(entry.getValue(), temp, ScoreMode.None));
+            for (Map.Entry<String, List<String>> entry : nestedPathTextFieldsMap.entrySet()) {
+                QueryBuilder temp;
+                if (entry.getValue().size() == 1) {
+                    temp = new MatchQueryBuilder(entry.getValue().get(0), word).minimumShouldMatch("3<75%");
+                } else {
+                    temp = new MultiMatchQueryBuilder(word, entry.getValue().toArray(new String[0])).minimumShouldMatch("3<75%");
+                }
+
+                boolQueryBuilder.should(new NestedQueryBuilder(entry.getKey(), temp, ScoreMode.None));
             }
 
             SearchInput searchInput = new SearchInput();

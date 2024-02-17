@@ -15,7 +15,7 @@ import java.util.List;
 
 @Setter
 @Getter
-@JsonPropertyOrder({"familyId", "uid", "name", "tagIds", "address", "created"})
+@JsonPropertyOrder({"familyId", "uid", "name", "tagIds", "fathers"})
 @JsonInclude(value = JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 //@EsTableName("estestines")
@@ -32,47 +32,42 @@ public class EsTestInEs extends BaseEs {
     @EsField(type = EsTypeEnum.LONG)
     private List<Long> tagIds;
 
-    @EsField(type = EsTypeEnum.OBJECT, objectType = Address.class)
-    private Address address;
-
-    @EsField(type = EsTypeEnum.DATE)
-    private Date created;
+    @EsField(type = EsTypeEnum.NESTED, objectType = Father.class)
+    private List<Father> fathers;
 
     @Setter
     @Getter
-    @JsonPropertyOrder({"country", "province", "address", "addressList"})
     @JsonInclude(value = JsonInclude.Include.NON_NULL)
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class Address {
+    public static class Father {
         @EsField(type = EsTypeEnum.TEXT, textHasKeywordField = true)
-        private String country;
+        private String name;
 
-        @EsField(type = EsTypeEnum.KEYWORD)
-        private String province;
+        @EsField(type = EsTypeEnum.TEXT, textHasKeywordField = true)
+        private String nickname;
 
-        @EsField(type = EsTypeEnum.OBJECT, objectType = Address.class)
-        private Address address;
+        @EsField(type = EsTypeEnum.OBJECT, objectType = Outer.class)
+        private Outer outer;
+    }
 
-        @EsField(type = EsTypeEnum.NESTED, objectType = Address.class)
-        private List<Address> addressList;
+    @Setter
+    @Getter
+    @JsonInclude(value = JsonInclude.Include.NON_NULL)
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Outer {
+        @EsField(type = EsTypeEnum.NESTED, objectType = Child.class)
+        private List<Child> children;
+    }
 
-        public static Address of(String country, String province, String listCountry, String listProvince) {
-            Address data = new Address();
-            Address subData = new Address();
-            Address listData = new Address();
+    @Setter
+    @Getter
+    @JsonInclude(value = JsonInclude.Include.NON_NULL)
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Child {
+        @EsField(type = EsTypeEnum.TEXT, textHasKeywordField = true)
+        private String name;
 
-            subData.setCountry(country);
-            subData.setProvince(province);
-
-            listData.setCountry(listCountry);
-            listData.setProvince(listProvince);
-
-            data.setCountry(country);
-            data.setProvince(province);
-            data.setAddress(subData);
-            data.setAddressList(Lists.newArrayList(listData));
-
-            return data;
-        }
+        @EsField(type = EsTypeEnum.TEXT, textHasKeywordField = true)
+        private String nickname;
     }
 }

@@ -1,5 +1,6 @@
 package io.github.chaogeoop.base.example.repository.domains;
 
+import com.google.common.collect.Lists;
 import io.github.chaogeoop.base.business.elasticsearch.ISearch;
 import io.github.chaogeoop.base.business.mongodb.BaseModel;
 import io.github.chaogeoop.base.business.mongodb.ISplitCollection;
@@ -53,16 +54,20 @@ public class EsTest extends BaseModel implements ISplitCollection, ISearch<EsTes
         esData.setUid(this.uid);
         esData.setName(this.name);
         esData.setTagIds(this.tagIds);
-        esData.setAddress(null);
-        esData.setCreated(this.created);
 
-        if (this.address != null && !this.addressList.isEmpty()) {
-            EsTestInEs.Address address = EsTestInEs.Address.of(
-                    this.address.getCountry(), this.address.getProvince(),
-                    this.addressList.get(0).getCountry(), this.addressList.get(0).getProvince()
-            );
-            esData.setAddress(address);
-        }
+        EsTestInEs.Child child = new EsTestInEs.Child();
+        child.setName("儿子");
+        child.setNickname("崽崽");
+
+        EsTestInEs.Outer outer = new EsTestInEs.Outer();
+        outer.setChildren(Lists.newArrayList(child));
+
+        EsTestInEs.Father father = new EsTestInEs.Father();
+        father.setName("父亲");
+        father.setNickname("爸爸");
+        father.setOuter(outer);
+
+        esData.setFathers(Lists.newArrayList(father));
 
         return esData;
     }
