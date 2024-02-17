@@ -32,7 +32,7 @@ public class EsHelper {
 
     private static final ConcurrentHashMap<Class<? extends IBaseEs>, Map<String, Object>> esMappingMap = new ConcurrentHashMap<>();
 
-    private static final ConcurrentHashMap<Class<? extends IBaseEs>, TextAndNestedInfo> esTextAndNestedInfoMap = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<Class<? extends IBaseEs>, EsFieldInfo> esFieldInfoMap = new ConcurrentHashMap<>();
 
     private static final Map<String, Map<String, String>> textKeywordField = Map.of("keyword", Map.of("type", "keyword"));
 
@@ -50,12 +50,12 @@ public class EsHelper {
         throw new BizException("数据非法");
     }
 
-    public static BoolQueryBuilder convert(Query query, TextAndNestedInfo textAndNestedInfo, boolean needBoost) {
-        return convert(query.getQueryObject(), textAndNestedInfo, needBoost);
+    public static BoolQueryBuilder convert(Query query, EsFieldInfo esFieldInfo, boolean needBoost) {
+        return convert(query.getQueryObject(), esFieldInfo, needBoost);
     }
 
-    public static BoolQueryBuilder convert(Document document, TextAndNestedInfo textAndNestedInfo, boolean needBoost) {
-        ConvertEntity entity = new ConvertEntity(document, textAndNestedInfo, needBoost);
+    public static BoolQueryBuilder convert(Document document, EsFieldInfo esFieldInfo, boolean needBoost) {
+        ConvertEntity entity = new ConvertEntity(document, esFieldInfo, needBoost);
 
         return entity.convert();
     }
@@ -66,11 +66,11 @@ public class EsHelper {
         private final Map<String, String> nestedFieldPathMap;
         private final Set<String> hasKeywordTextFields;
 
-        ConvertEntity(Document document, TextAndNestedInfo textAndNestedInfo, boolean needBoost) {
+        ConvertEntity(Document document, EsFieldInfo esFieldInfo, boolean needBoost) {
             this.document = document;
             this.needBoost = needBoost;
-            this.nestedFieldPathMap = textAndNestedInfo.giveNestedFiledPathMap();
-            this.hasKeywordTextFields = textAndNestedInfo.getHasKeywordTextFields();
+            this.nestedFieldPathMap = esFieldInfo.giveNestedFiledPathMap();
+            this.hasKeywordTextFields = esFieldInfo.getHasKeywordTextFields();
         }
 
         public BoolQueryBuilder convert() {
@@ -349,16 +349,16 @@ public class EsHelper {
         return Maps.newHashMap(esMappingMap.get(clazz));
     }
 
-    public static TextAndNestedInfo getTextAndNestedInfo(Class<? extends IBaseEs> clazz) {
-        TextAndNestedInfo textAndNestedInfo = esTextAndNestedInfoMap.get(clazz);
-        if (textAndNestedInfo != null) {
-            return textAndNestedInfo.giveCopy();
+    public static EsFieldInfo getTextAndNestedInfo(Class<? extends IBaseEs> clazz) {
+        EsFieldInfo esFieldInfo = esFieldInfoMap.get(clazz);
+        if (esFieldInfo != null) {
+            return esFieldInfo.giveCopy();
         }
 
         EsClazzEntity entity = new EsClazzEntity(clazz);
         entity.initCache();
 
-        return esTextAndNestedInfoMap.get(clazz).giveCopy();
+        return esFieldInfoMap.get(clazz).giveCopy();
     }
 
     @Setter
@@ -416,8 +416,8 @@ public class EsHelper {
                 esMappingMap.put(this.clazz, this.getMapping());
             }
 
-            if (!esTextAndNestedInfoMap.containsKey(this.clazz)) {
-                esTextAndNestedInfoMap.put(this.clazz, this.getTextAndNestedInfo());
+            if (!esFieldInfoMap.containsKey(this.clazz)) {
+                esFieldInfoMap.put(this.clazz, this.getEsFieldInfo());
             }
         }
 
@@ -429,6 +429,7 @@ public class EsHelper {
             Map<String, Object> result = new LinkedHashMap<>();
             Map<String, Object> temp = new LinkedHashMap<>();
             result.put("properties", temp);
+            result.put("dynamic", false);
 
             for (FieldNode child : node.getChildren()) {
                 EsTypeEnum esType = child.getDetail().getEsField().type();
@@ -437,11 +438,21 @@ public class EsHelper {
                 subTemp.put("type", esType.getEsType());
 
                 if (EsTypeEnum.OBJECT.equals(esType)) {
-                    subTemp.putAll(this.getMapping(child));
+                    Map<String, Object> subMapping = this.getMapping(child);
+                    if (((Map<String, Object>) subMapping.get("properties")).isEmpty()) {
+                        continue;
+                    }
+
+                    subTemp.putAll(subMapping);
                 }
 
                 if (EsTypeEnum.NESTED.equals(esType)) {
-                    subTemp.putAll(this.getMapping(child));
+                    Map<String, Object> subMapping = this.getMapping(child);
+                    if (((Map<String, Object>) subMapping.get("properties")).isEmpty()) {
+                        continue;
+                    }
+
+                    subTemp.putAll(subMapping);
                 }
 
                 if (EsTypeEnum.TEXT.equals(esType) && child.getDetail().getEsField().textHasKeywordField()) {
@@ -454,10 +465,23 @@ public class EsHelper {
             return result;
         }
 
-        public TextAndNestedInfo getTextAndNestedInfo() {
-            TextAndNestedInfo data = new TextAndNestedInfo();
+        public EsFieldInfo getEsFieldInfo() {
+            EsFieldInfo data = new EsFieldInfo();
 
-            data.setNestedTermFieldPathMap(this.getNestedTermFieldPathMap());
+            for (FieldNode node : this.tailTermNodes) {
+                List<FieldNode> list = this.buildNodeChain(node);
+
+                Pair<String, List<String>> pair = FieldNode.getFiledNestedPathListPair(list);
+                String fieldName = pair.getLeft();
+                List<String> nestedPathList = pair.getRight();
+
+                if (nestedPathList.isEmpty()) {
+                    data.getTermFields().add(fieldName);
+                    continue;
+                }
+
+                data.getNestedTermFieldPathMap().put(fieldName, nestedPathList.get(nestedPathList.size() - 1));
+            }
 
             for (FieldNode node : this.tailTextNodes) {
                 List<FieldNode> list = this.buildNodeChain(node);
@@ -481,26 +505,6 @@ public class EsHelper {
             return data;
         }
 
-        private Map<String, String> getNestedTermFieldPathMap() {
-            Map<String, String> map = new HashMap<>();
-
-            for (FieldNode node : this.tailTermNodes) {
-                List<FieldNode> list = this.buildNodeChain(node);
-
-                Pair<String, List<String>> pair = FieldNode.getFiledNestedPathListPair(list);
-                String fieldName = pair.getLeft();
-                List<String> nestedPathList = pair.getRight();
-
-                if (nestedPathList.isEmpty()) {
-                    continue;
-                }
-
-                map.put(fieldName, nestedPathList.get(nestedPathList.size() - 1));
-            }
-
-            return map;
-        }
-
         private List<FieldNode> buildNodeChain(FieldNode tailNode) {
             List<FieldNode> list = new ArrayList<>();
             list.add(tailNode);
@@ -520,6 +524,9 @@ public class EsHelper {
             this.tailNodes.remove(parent);
             for (Field field : clazz.getDeclaredFields()) {
                 FieldDetail detail = FieldDetail.of(field);
+                if (detail == null) {
+                    continue;
+                }
 
                 FieldNode sonNode = parent.addChildren(detail);
                 if (sonNode == null) {
@@ -536,22 +543,25 @@ public class EsHelper {
 
     @Setter
     @Getter
-    public static class TextAndNestedInfo {
+    public static class EsFieldInfo {
         private Set<String> textFields = new HashSet<>();
 
         private Map<String, String> nestedTextFieldPathMap = new HashMap<>();
 
         private Set<String> hasKeywordTextFields = new HashSet<>();
 
+        private Set<String> termFields = new HashSet<>();
+
         private Map<String, String> nestedTermFieldPathMap = new HashMap<>();
 
 
-        public TextAndNestedInfo giveCopy() {
-            TextAndNestedInfo data = new TextAndNestedInfo();
+        public EsFieldInfo giveCopy() {
+            EsFieldInfo data = new EsFieldInfo();
 
             data.setTextFields(Sets.newHashSet(this.textFields));
             data.setNestedTextFieldPathMap(Maps.newHashMap(this.nestedTextFieldPathMap));
             data.setHasKeywordTextFields(Sets.newHashSet(this.hasKeywordTextFields));
+            data.setTermFields(Sets.newHashSet(this.termFields));
             data.setNestedTermFieldPathMap(Maps.newHashMap(this.nestedTermFieldPathMap));
 
             return data;
@@ -574,10 +584,10 @@ public class EsHelper {
 
         private EsField esField;
 
-        public static FieldDetail of(Field field) {
+        public static @Nullable FieldDetail of(Field field) {
             boolean hasEsField = field.isAnnotationPresent(EsField.class);
             if (!hasEsField) {
-                throw new BizException("有字段没注解EsField");
+                return null;
             }
 
             FieldDetail data = new FieldDetail();
@@ -656,12 +666,12 @@ public class EsHelper {
     public static class SearchInput {
         private Query query;
 
-        private EsHelper.TextAndNestedInfo textAndNestedInfo;
+        private EsFieldInfo esFieldInfo;
 
         private BoolQueryBuilder wordSearchQueryBuilder;
 
         public BoolQueryBuilder convertToEsQuery() {
-            BoolQueryBuilder mainQuery = convert(this.query, this.textAndNestedInfo, false);
+            BoolQueryBuilder mainQuery = convert(this.query, this.esFieldInfo, false);
             if (this.wordSearchQueryBuilder != null) {
                 mainQuery.must(this.wordSearchQueryBuilder);
             }
@@ -670,18 +680,18 @@ public class EsHelper {
         }
 
         public static SearchInput of(Query query, String word, Class<? extends IBaseEs> clazz) {
-            TextAndNestedInfo textAndNestedInfo = EsHelper.getTextAndNestedInfo(clazz);
+            EsFieldInfo esFieldInfo = EsHelper.getTextAndNestedInfo(clazz);
 
             BoolQueryBuilder boolQueryBuilder = new BoolQueryBuilder().minimumShouldMatch(1);
 
-            if (!textAndNestedInfo.getTextFields().isEmpty()) {
-                String[] fields = textAndNestedInfo.getTextFields().toArray(new String[0]);
+            if (!esFieldInfo.getTextFields().isEmpty()) {
+                String[] fields = esFieldInfo.getTextFields().toArray(new String[0]);
 
                 boolQueryBuilder.should(new MultiMatchQueryBuilder(word, fields).minimumShouldMatch("3<75%"));
             }
 
             MultiValueMap<String, String> nestedPathTextFieldsMap = new LinkedMultiValueMap<>();
-            for (Map.Entry<String, String> entry : textAndNestedInfo.getNestedTextFieldPathMap().entrySet()) {
+            for (Map.Entry<String, String> entry : esFieldInfo.getNestedTextFieldPathMap().entrySet()) {
                 nestedPathTextFieldsMap.add(entry.getValue(), entry.getKey());
             }
 
@@ -698,7 +708,7 @@ public class EsHelper {
 
             SearchInput searchInput = new SearchInput();
             searchInput.setQuery(query);
-            searchInput.setTextAndNestedInfo(textAndNestedInfo);
+            searchInput.setEsFieldInfo(esFieldInfo);
             searchInput.setWordSearchQueryBuilder(boolQueryBuilder);
 
             return searchInput;
