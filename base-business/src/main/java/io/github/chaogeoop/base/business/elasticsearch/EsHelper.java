@@ -349,7 +349,7 @@ public class EsHelper {
         return Maps.newHashMap(esMappingMap.get(clazz));
     }
 
-    public static EsFieldInfo getTextAndNestedInfo(Class<? extends IBaseEs> clazz) {
+    public static EsFieldInfo getEsFieldInfo(Class<? extends IBaseEs> clazz) {
         EsFieldInfo esFieldInfo = esFieldInfoMap.get(clazz);
         if (esFieldInfo != null) {
             return esFieldInfo.giveCopy();
@@ -680,7 +680,7 @@ public class EsHelper {
         }
 
         public static SearchInput of(Query query, String word, Class<? extends IBaseEs> clazz) {
-            EsFieldInfo esFieldInfo = EsHelper.getTextAndNestedInfo(clazz);
+            EsFieldInfo esFieldInfo = EsHelper.getEsFieldInfo(clazz);
 
             BoolQueryBuilder boolQueryBuilder = new BoolQueryBuilder().minimumShouldMatch(1);
 
