@@ -98,7 +98,7 @@ public class EsTestDao implements ISplitPrimaryChooseRepository<EsTest> {
         BoolQueryBuilder mainQuery = input.convertToEsQuery();
 
         EsPageSplitter esPageSplitter = new EsPageSplitter(
-                0, 10, Lists.newArrayList(SortBuilders.fieldSort("uid").order(SortOrder.DESC).missing("_first"))
+                0, 10, Lists.newArrayList(SortBuilders.fieldSort("_score").order(SortOrder.DESC))
         );
 
         List<EsTest> splitKeys = CollectionHelper.map(familyIds, EsTest::splitKeyOf);
