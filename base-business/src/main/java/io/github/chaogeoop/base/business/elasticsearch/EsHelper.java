@@ -422,6 +422,10 @@ public class EsHelper {
         }
 
         public Map<String, Object> getMapping() {
+            if (this.root.getChildren().isEmpty()) {
+                throw new BizException("没有定义任何esField");
+            }
+
             return this.getMapping(this.root);
         }
 
@@ -438,21 +442,11 @@ public class EsHelper {
                 subTemp.put("type", esType.getEsType());
 
                 if (EsTypeEnum.OBJECT.equals(esType)) {
-                    Map<String, Object> subMapping = this.getMapping(child);
-                    if (((Map<String, Object>) subMapping.get("properties")).isEmpty()) {
-                        continue;
-                    }
-
-                    subTemp.putAll(subMapping);
+                    subTemp.putAll(this.getMapping(child));
                 }
 
                 if (EsTypeEnum.NESTED.equals(esType)) {
-                    Map<String, Object> subMapping = this.getMapping(child);
-                    if (((Map<String, Object>) subMapping.get("properties")).isEmpty()) {
-                        continue;
-                    }
-
-                    subTemp.putAll(subMapping);
+                    subTemp.putAll(this.getMapping(child));
                 }
 
                 if (EsTypeEnum.TEXT.equals(esType) && child.getDetail().getEsField().textHasKeywordField()) {

@@ -28,12 +28,15 @@ public class InitCollectionIndexHandler {
         for (EsProvider esProvider : esProviders) {
             databaseEsMap.put(esProvider.giveMongoTemplate(), esProvider.giveEs());
         }
-
-        this.setProperties();
+        ExecutorService executorService = Executors.newFixedThreadPool(10);
+        try {
+            this.setProperties(executorService);
+        } finally {
+            executorService.shutdown();
+        }
     }
 
-    private void setProperties() {
-        ExecutorService executorService = Executors.newFixedThreadPool(10);
+    private void setProperties(ExecutorService executorService) {
         Set<MongoTemplate> databaseList = new HashSet<>();
 
         Map<MongoTemplate, List<IPrimaryChoose<? extends BaseModel>>> templateDaoListMap = CollectionHelper.groupBy(this.daoList, IPrimaryChoose::getPrimary);
@@ -99,8 +102,6 @@ public class InitCollectionIndexHandler {
             }
         }
         this.init(executorService, esInitUnitList, unit -> BaseEsHelper.getAccordEsNamePreInit(unit.getJestClient(), unit.getBaseEsName(), unit.getEsName(), unit.getMapping()));
-
-        executorService.shutdown();
     }
 
     private <M> void init(ExecutorService executorService, List<M> list, Function<M, ?> func) {
@@ -115,7 +116,6 @@ public class InitCollectionIndexHandler {
             try {
                 future.get();
             } catch (Exception e) {
-                executorService.shutdown();
                 throw new BizException(e);
             }
         }
