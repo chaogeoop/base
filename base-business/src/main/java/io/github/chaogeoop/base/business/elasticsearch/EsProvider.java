@@ -10,7 +10,6 @@ import io.github.chaogeoop.base.business.common.errors.BizException;
 import io.github.chaogeoop.base.business.redis.DistributedKeyType;
 import io.github.chaogeoop.base.business.common.entities.ListPage;
 import io.github.chaogeoop.base.business.common.helpers.CollectionHelper;
-import io.github.chaogeoop.base.business.common.helpers.JsonHelper;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import io.searchbox.client.JestClient;
@@ -95,8 +94,8 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
                 esUnitInfoSet.add(esUnitInfo);
 
                 for (BaseModel obj : entry.getValue()) {
-                    IBaseEs esData = ((ISearch<? extends IBaseEs>) obj).giveEsData();
-                    if (esData == null) {
+                    String esJson = ((ISearch<? extends IBaseEs>) obj).giveEsJson();
+                    if (esJson == null) {
                         continue;
                     }
 
@@ -113,7 +112,7 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
                     log.setUniqueId(entry.getKey().getCollectionName().toLowerCase() + "_" + obj.getId().toString(16));
                     log.setVersion(obj.getV());
                     log.setAction(actionEntry.getKey());
-                    log.setData(JsonHelper.writeValueAsString(esData));
+                    log.setData(esJson);
 
                     logs.add(log);
                 }

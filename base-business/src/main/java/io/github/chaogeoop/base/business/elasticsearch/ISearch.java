@@ -5,5 +5,5 @@ import javax.annotation.Nullable;
 public interface ISearch<M extends IBaseEs> {
     Class<M> giveEsModel();
     @Nullable
-    M giveEsData();
+    String giveEsJson();
 }
