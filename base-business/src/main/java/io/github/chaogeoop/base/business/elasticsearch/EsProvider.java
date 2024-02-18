@@ -24,6 +24,7 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.util.MultiValueMap;
 
+import javax.annotation.Nullable;
 import javax.lang.model.type.NullType;
 import java.time.Duration;
 import java.util.*;
@@ -200,21 +201,26 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
             return;
         }
 
-        DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity = DistributedKeyProvider.KeyEntity.of(
-                this.redisAbout.getEsDataCacheType(),
-                log.calTypeId()
-        );
+        DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity = null;
+        if (this.redisAbout.getEsDataCacheType() != null) {
+            keyEntity = DistributedKeyProvider.KeyEntity.of(
+                    this.redisAbout.getEsDataCacheType(),
+                    log.calTypeId()
+            );
 
-        if (EsProvider.ActionEnum.UPDATE.equals(log.getAction())) {
-            String cacheStringData = this.redisAbout.getRedisProvider().get(keyEntity, String.class);
-            if (cacheStringData != null && cacheStringData.equals(log.getData())) {
-                return;
+            if (EsProvider.ActionEnum.UPDATE.equals(log.getAction())) {
+                String cacheStringData = this.redisAbout.getRedisProvider().get(keyEntity, String.class);
+                if (cacheStringData != null && cacheStringData.equals(log.getData())) {
+                    return;
+                }
             }
         }
 
         SimpleSearchHelper.insertOrUpdateData(this.jestClient, realEsName, log.getUniqueId(), log.getData());
 
-        this.redisAbout.getRedisProvider().set(keyEntity, RedisProvider.AcceptType.of(log.getData()), Duration.ofHours(6));
+        if (keyEntity != null) {
+            this.redisAbout.getRedisProvider().set(keyEntity, RedisProvider.AcceptType.of(log.getData()), Duration.ofHours(1));
+        }
     }
 
 
@@ -254,12 +260,13 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
     public static class RedisAbout<M extends DistributedKeyType> {
         private RedisProvider redisProvider;
 
+        @Nullable
         private M esDataCacheType;
 
         private M esDataSyncLockType;
 
         public static <M extends DistributedKeyType> RedisAbout<M> of(
-                RedisProvider redisProvider, M cacheType, M lockType
+                RedisProvider redisProvider, @Nullable M cacheType, M lockType
         ) {
             RedisAbout<M> data = new RedisAbout<>();
 
