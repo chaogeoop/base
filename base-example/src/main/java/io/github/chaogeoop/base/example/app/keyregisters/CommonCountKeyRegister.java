@@ -1,5 +1,6 @@
 package io.github.chaogeoop.base.example.app.keyregisters;
 
+import io.github.chaogeoop.base.business.redis.DistributedKeyProvider;
 import io.github.chaogeoop.base.business.redis.DistributedKeyType;
 import io.github.chaogeoop.base.business.redis.IKeyRegister;
 import lombok.Getter;
@@ -21,7 +22,7 @@ public class CommonCountKeyRegister implements IKeyRegister<CommonCountKeyRegist
     public static CommonCountDistributedKey COMMON_COUNT_PERSIST_HISTORY_PERSIST_LOCK_TYPE =
             CommonCountDistributedKey.of("commonCountPersistHistory", "persistLock");
 
-    public static CommonCountDistributedKey COMMON_COUNT_PERSIST_HISTORY_HASH_STORE_TYPE =
+    private static final CommonCountDistributedKey COMMON_COUNT_PERSIST_HISTORY_HASH_STORE_TYPE =
             CommonCountDistributedKey.of("commonCountPersistHistory", "hashStore");
 
     public static CommonCountDistributedKey COUNT_BIZ_AFTER_ALL_TOTAL_CACHE_TYPE =
@@ -39,6 +40,10 @@ public class CommonCountKeyRegister implements IKeyRegister<CommonCountKeyRegist
         list.add(COUNT_BIZ_AFTER_ALL_TOTAL_CACHE_TYPE);
 
         return list;
+    }
+
+    public static DistributedKeyProvider.KeyEntity<CommonCountDistributedKey> getHistoryStoreHashKeyEntity() {
+        return DistributedKeyProvider.KeyEntity.of(CommonCountKeyRegister.COMMON_COUNT_PERSIST_HISTORY_HASH_STORE_TYPE, "hash");
     }
 
     @Setter

@@ -17,6 +17,7 @@ import com.google.common.collect.Sets;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.Pair;
 import org.bson.types.ObjectId;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -268,6 +269,7 @@ public class CommonCountProvider {
 
             while (true) {
                 Query query = new Query();
+                query.addCriteria(Criteria.where("ds").is(false));
                 query.addCriteria(Criteria.where("st").lt(limitTime.getTime()));
                 query.addCriteria(Criteria.where("c").is(false));
                 query.limit(1000);
@@ -313,7 +315,7 @@ public class CommonCountProvider {
 
         Map<String, RedisProvider.AcceptType> map = new HashMap<>();
         for (Map.Entry<CountBizDate, Long> entry : bizDateIncMap.entrySet()) {
-            CommonCountPersistHistory data = CommonCountPersistHistory.of(CommonCountPersistHistory.class, entry.getKey(), entry.getValue());
+            CommonCountPersistHistory data = CommonCountPersistHistory.of(entry.getKey(), entry.getValue());
             String key = UUID.randomUUID().toString();
 
             map.put(key, RedisProvider.AcceptType.of(JsonHelper.writeValueAsString(data)));
@@ -438,7 +440,7 @@ public class CommonCountProvider {
     }
 
 
-    public MongoPersistEntity.PersistEntity distributeSafeMultiBizCount(Map<CountBiz, Long> bizIncMap, Date occurTime) {
+    public Pair<MongoPersistEntity.PersistEntity, Map<CountBiz, CountBizEntity>> distributeSafeMultiBizCount(Map<CountBiz, Long> bizIncMap, Date occurTime) {
         MongoPersistEntity.PersistEntity persistEntity = new MongoPersistEntity.PersistEntity();
 
         String occurDate = DateHelper.dateToString(occurTime, DateHelper.DateFormatEnum.fullUntilDay);
@@ -466,8 +468,12 @@ public class CommonCountProvider {
         MultiCountBizEntity multiCountBizEntity = new MultiCountBizEntity(countBizEntityList);
         multiCountBizEntity.collectNeedPersist(persistEntity);
 
+        Map<CountBiz, CountBizEntity> bizCountEntityMap = CollectionHelper.toMap(countBizEntityList, o -> o.biz);
+
+        Pair<MongoPersistEntity.PersistEntity, Map<CountBiz, CountBizEntity>> result = Pair.of(persistEntity, bizCountEntityMap);
+
         if (!this.redisAbout.cacheAfterAllTotal) {
-            return persistEntity;
+            return result;
         }
 
         for (CountBizEntity countBizEntity : countBizEntityList) {
@@ -498,7 +504,7 @@ public class CommonCountProvider {
             persistEntity.getCacheList().add(cache);
         }
 
-        return persistEntity;
+        return result;
     }
 
 
@@ -610,7 +616,7 @@ public class CommonCountProvider {
         }
     }
 
-    private class CountBizEntity {
+    public class CountBizEntity {
         private final boolean isDistributeSafe;
         private final CountBizDate bizDate;
         private final CountBiz biz;
@@ -628,7 +634,7 @@ public class CommonCountProvider {
 
         private long afterAllTotal = 0;
 
-        public CountBizEntity(CountBizDate bizDate, long inc) {
+        private CountBizEntity(CountBizDate bizDate, long inc) {
             this.isDistributeSafe = false;
             this.bizDate = bizDate;
             this.biz = this.bizDate.extractBiz();
@@ -655,7 +661,7 @@ public class CommonCountProvider {
             }
         }
 
-        public CountBizEntity(CommonCountTotal countTotal, Date occurTime, long inc) {
+        private CountBizEntity(CommonCountTotal countTotal, Date occurTime, long inc) {
             this.isDistributeSafe = true;
             Date currentTime = new Date();
             this.currentDate = DateHelper.dateToString(currentTime, DateHelper.DateFormatEnum.fullUntilDay);
@@ -667,6 +673,11 @@ public class CommonCountProvider {
             this.bizDate = this.biz.convertToBizDate(occurDate);
             this.inc = inc;
             this.commonCountTotal = countTotal;
+        }
+
+        //持久化完再调用
+        public long giveAfterAllTotal() {
+            return this.afterAllTotal;
         }
 
         private void collectNeedPersist(MongoPersistEntity.PersistEntity persistEntity) {
@@ -814,6 +825,7 @@ public class CommonCountProvider {
                 @Override
                 public CommonCountTotal createWhenNotExist() {
                     CommonCountTotal data = CommonCountTotal.of(totalDbClazz, bizDate);
+                    data.setDistributeSafe(false);
 
                     return mongoTemplate.insert(data, collectionName);
                 }
@@ -826,7 +838,7 @@ public class CommonCountProvider {
                     redisAbout.getRedisProvider().set(
                             DistributedKeyProvider.KeyEntity.of(redisAbout.getCommonCountTotalCacheKeyType(), JsonHelper.writeValueAsString(this.biz)),
                             RedisProvider.AcceptType.of(JsonHelper.writeValueAsString(o)),
-                            redisAbout.getCacheDuration()
+                            Duration.ofHours(1)
                     );
                 }
 
@@ -1038,7 +1050,7 @@ public class CommonCountProvider {
     @Getter
     @CompoundIndexes({
             @CompoundIndex(name = "typeId_bizType_subBizType", def = "{'t':1, 'b':1, 's': 1}", unique = true),
-            @CompoundIndex(name = "latestCacheStamp_dataIsCold", def = "{'st':1, 'c':1}")
+            @CompoundIndex(name = "distributeSafe_latestCacheStamp_dataIsCold", def = "{'ds': 1, 'st':1, 'c':1}")
     })
     public static class CommonCountTotal extends BaseModel implements ISplitCollection {
         @Field(value = "t")
@@ -1060,6 +1072,9 @@ public class CommonCountProvider {
 
         @Field(value = "c")
         private Boolean dataIsCold = false;
+
+        @Field(value = "ds")
+        private Boolean distributeSafe = true;
 
         public void setLatestCacheDate(String date) {
             this.latestCacheDate = date;
@@ -1138,6 +1153,7 @@ public class CommonCountProvider {
                 data.setTotal(0L);
                 data.setLatestCacheDate(bizDate.getDate());
                 data.setDataIsCold(false);
+                data.setDistributeSafe(true);
             } catch (Exception e) {
                 throw new BizException(String.format("createTotal fail: %s", e.getMessage()));
             }
@@ -1244,7 +1260,7 @@ public class CommonCountProvider {
 
     @Setter
     @Getter
-    public static class CommonCountPersistHistory extends BaseModel {
+    public static class CommonCountPersistHistory {
         private String typeId;
 
         private String bizType;
@@ -1255,18 +1271,14 @@ public class CommonCountProvider {
 
         private String date;
 
-        public static <M extends CommonCountPersistHistory> M of(Class<M> clazz, CountBizDate bizDate, long inc) {
-            M data;
-            try {
-                data = clazz.getDeclaredConstructor().newInstance();
-                data.setTypeId(bizDate.getTypeId());
-                data.setBizType(bizDate.getBizType());
-                data.setSubBizType(bizDate.getSubBizType());
-                data.setDate(bizDate.getDate());
-                data.setTotal(inc);
-            } catch (Exception e) {
-                throw new BizException(String.format("createPersistHistory fail: %s", e.getMessage()));
-            }
+        public static CommonCountPersistHistory of(CountBizDate bizDate, long inc) {
+            CommonCountPersistHistory data = new CommonCountPersistHistory();
+
+            data.setTypeId(bizDate.getTypeId());
+            data.setBizType(bizDate.getBizType());
+            data.setSubBizType(bizDate.getSubBizType());
+            data.setDate(bizDate.getDate());
+            data.setTotal(inc);
 
             return data;
         }
