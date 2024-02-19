@@ -298,7 +298,7 @@ public class CommonCountProvider {
     }
 
     public MongoPersistEntity.PersistEntity insertPersistHistoryNow(
-            Map<CountBiz, Long> bizIncMap, List<MongoPersistEntity.PersistEntity> persistEntityList
+            Map<CountBiz, Long> bizIncMap
     ) {
         String date = DateHelper.dateToString(DateHelper.plusDurationOfDate(new Date(), Duration.ofSeconds(-10)), DateHelper.DateFormatEnum.fullUntilDay);
 
