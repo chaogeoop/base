@@ -73,7 +73,7 @@ public class BeanConfig {
                 persistProvider,
                 CommonCountProvider.RedisAbout.of(
                         this.redisProvider,
-                        Duration.ofHours(1),
+                        Duration.ofMinutes(1),
                         CommonCountKeyRegister.COMMON_COUNT_TOTAL_CACHE_TYPE,
                         CommonCountKeyRegister.COMMON_COUNT_TOTAL_CREATE_LOCK_TYPE,
                         CommonCountKeyRegister.COUNT_BIZ_DATE_CACHE_TYPE,

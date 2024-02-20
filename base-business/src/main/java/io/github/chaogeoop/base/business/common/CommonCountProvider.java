@@ -51,18 +51,22 @@ public class CommonCountProvider {
             "local nextInc = tonumber(ARGV[1])  \n" +
             "local total = tonumber(ARGV[2])  \n" +
             "local timeout = tonumber(ARGV[3])  \n" +
-            "if redis.call(\"EXISTS\", beforeKey) == 1 then  \n" +
-            "    local beforeValue = tonumber(redis.call(\"GET\", beforeKey))  \n" +
-            "    if beforeValue ~= nil then  \n" +
-            "        total = total + beforeValue  \n" +
+            "if beforeKey ~= nextKey then  \n" +
+            "    if redis.call(\"EXISTS\", beforeKey) == 1 then  \n" +
+            "        local beforeValue = tonumber(redis.call(\"GET\", beforeKey))  \n" +
+            "        if beforeValue ~= nil then  \n" +
+            "            total = total + beforeValue  \n" +
+            "        end  \n" +
             "    end  \n" +
+            "    if nextInc > 0 then  \n" +
+            "        redis.call(\"INCRBY\", nextKey, nextInc)  \n" +
+            "        total = total + nextInc  \n" +
+            "    end  \n" +
+            "else  \n" +
+            "    local afterCache = redis.call(\"INCRBY\", nextKey, nextInc) \n" +
+            "    total = total + afterCache \n" +
             "end  \n" +
-            "if nextInc > 0 then  \n" +
-            "    redis.call(\"INCRBY\", nextKey, nextInc)  \n" +
-            "    total = total + nextInc  \n" +
-            "end  \n" +
-            "redis.call(\"SET\", afterAllKey, tostring(total))  \n" +
-            "redis.call(\"EXPIRE\", afterAllKey, timeout)  \n" +
+            "redis.call(\"SETEX\", afterAllKey, timeout, tostring(total))  \n" +
             "return total";
 
 
@@ -426,22 +430,30 @@ public class CommonCountProvider {
                 persistEntity.getCacheList().add(deleteHistoryCache);
 
                 this.persistProvider.persist(Lists.newArrayList(persistEntity));
-            } else {
-                this.redisAbout.getRedisProvider().exeFuncWithLock(
-                        DistributedKeyProvider.KeyEntity.of(this.redisAbout.getCommonCountTotalCreateLockType(), JsonHelper.writeValueAsString(biz)),
-                        M -> {
-                            countBizEntity.setCommonCountTotal();
-                            countBizEntity.initCacheAbout();
-                            countBizEntity.setCommonCountDateLog();
-                            countBizEntity.collectNeedPersist(persistEntity);
 
-                            persistEntity.getCacheList().add(deleteHistoryCache);
+                return null;
+            }
 
-                            this.persistProvider.persist(Lists.newArrayList(persistEntity));
+            this.redisAbout.getRedisProvider().exeFuncWithLock(
+                    DistributedKeyProvider.KeyEntity.of(this.redisAbout.getCommonCountTotalCreateLockType(), JsonHelper.writeValueAsString(biz)),
+                    M -> {
+                        countBizEntity.setCommonCountTotal();
+                        countBizEntity.initCacheAbout();
+                        countBizEntity.setCommonCountDateLog();
+                        countBizEntity.collectNeedPersist(persistEntity);
 
-                            return null;
-                        }
-                );
+                        persistEntity.getCacheList().add(deleteHistoryCache);
+
+                        this.persistProvider.persist(Lists.newArrayList(persistEntity));
+
+                        return null;
+                    }
+            );
+
+            if (CacheStateEnum.NO_CACHE.equals(countBizEntity.cacheState) && countBizEntity.inc > 0) {
+                MongoPersistEntity.PersistEntity fixAfterTotalEntity = this.insertPersistHistoryNow(Map.of(biz, 0L));
+
+                this.persistProvider.persist(Lists.newArrayList(fixAfterTotalEntity));
             }
 
             return null;

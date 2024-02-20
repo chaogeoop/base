@@ -33,20 +33,26 @@ public class CommonCountController {
 
     @PostMapping("/upload")
     public HttpResult<Boolean> upload(@RequestBody BizInput input) {
+        Random rand = new Random();
+
         List<Map<CommonCountProvider.CountBizDate, Long>> bizDateIncMapList = new ArrayList<>();
 
         for (int i = 0; i < 1; i++) {
+            int inc = rand.nextInt(10);
+
             Map<CommonCountProvider.CountBizDate, Long> map = new HashMap<>();
             for (String date : input.getDates()) {
                 for (CommonCountProvider.CountBiz biz : input.getBizList()) {
                     CommonCountProvider.CountBizDate bizDate = biz.convertToBizDate(date);
 
-                    map.put(bizDate, 1L);
+                    map.put(bizDate, (long) inc);
                 }
             }
 
             bizDateIncMapList.add(map);
         }
+
+        Collections.shuffle(bizDateIncMapList);
 
         MongoPersistEntity.PersistEntity persistEntity = this.commonCountProvider.insertPersistHistory(bizDateIncMapList);
 

@@ -30,6 +30,12 @@ public class RedisProvider {
             "    return 0 " +
             "end ";
 
+    private static final String MULTI_SET_EXPIRE = "local ttl = tonumber(ARGV[#ARGV]) \n" +
+            "for i, key in ipairs(KEYS) do  \n" +
+            "    redis.call(\"SETEX\", key, ttl, ARGV[i])  \n" +
+            "end  \n" +
+            "return 1";
+
     public RedisProvider(RedisTemplate<String, Object> template, DistributedKeyProvider distributedKeyProvider) {
         this.template = template;
         this.distributedKeyProvider = distributedKeyProvider;
@@ -71,12 +77,42 @@ public class RedisProvider {
         return JsonHelper.readValue(value.toString(), clazz);
     }
 
-    public <T> void set(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, AcceptType type, Duration duration) {
+    public void set(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, AcceptType type, Duration duration) {
         this.template.opsForValue().set(this.distributedKeyProvider.getKey(keyEntity), type.getValue(), duration);
     }
 
-    public <T> void set(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, AcceptType type) {
+    public void set(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, AcceptType type) {
         this.template.opsForValue().set(this.distributedKeyProvider.getKey(keyEntity), type.getValue());
+    }
+
+    public void setEx(Map<DistributedKeyProvider.KeyEntity<? extends DistributedKeyType>, AcceptType> map, Duration duration) {
+        Map<String, Object> valueMap = new HashMap<>(map.size());
+        for (Map.Entry<DistributedKeyProvider.KeyEntity<? extends DistributedKeyType>, AcceptType> entry : map.entrySet()) {
+            valueMap.put(this.distributedKeyProvider.getKey(entry.getKey()), entry.getValue().getValue());
+        }
+
+        this.setExIntern(valueMap, duration);
+    }
+
+    private void setExIntern(Map<String, Object> map, Duration duration) {
+        if (map.isEmpty()) {
+            return;
+        }
+
+        List<String> keys = new ArrayList<>(map.size());
+        Object[] values = new Object[map.size() + 1];
+        values[values.length - 1] = duration.toSeconds();
+
+        List<Map.Entry<String, Object>> list = Lists.newArrayList(map.entrySet());
+        for (int i = 0; i < list.size(); i++) {
+            Map.Entry<String, Object> entry = list.get(i);
+
+            keys.add(entry.getKey());
+            values[i] = entry.getValue();
+        }
+
+        DefaultRedisScript<Long> redisScript = new DefaultRedisScript<>(MULTI_SET_EXPIRE, Long.class);
+        this.template.execute(redisScript, keys, values);
     }
 
     public long incrBy(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, long increment) {
@@ -196,10 +232,6 @@ public class RedisProvider {
             valueMap.put(entry.getKey(), entry.getValue().getValue());
         }
 
-        HashOperations<String, String, Object> hashOperator = this.template.opsForHash();
-
-        hashOperator.putAll(this.distributedKeyProvider.getKey(keyEntity), valueMap);
-
         this.template.opsForHash().putAll(this.distributedKeyProvider.getKey(keyEntity), valueMap);
     }
 
@@ -218,7 +250,6 @@ public class RedisProvider {
 
 
     //application
-    @Nullable
     private boolean lock(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, String lockValue, Duration duration) {
         Boolean locked = this.template.opsForValue().setIfAbsent(this.distributedKeyProvider.getKey(keyEntity), lockValue, duration);
         if (!Boolean.TRUE.equals(locked)) {
@@ -344,16 +375,18 @@ public class RedisProvider {
 
         map.putAll(needCacheMap);
 
+        Map<String, Object> stringCacheMap = new HashMap<>(needCacheMap.size());
         for (Map.Entry<K, V> entry : needCacheMap.entrySet()) {
             if (entry.getValue() == null) {
                 continue;
             }
 
-            this.set(
-                    DistributedKeyProvider.KeyEntity.of(type, JsonHelper.writeValueAsString(entry.getKey())),
-                    AcceptType.of(JsonHelper.writeValueAsString(entry.getValue())),
-                    timeout
-            );
+            DistributedKeyProvider.KeyEntity<T> keyEntity = DistributedKeyProvider.KeyEntity.of(type, JsonHelper.writeValueAsString(entry.getKey()));
+
+            stringCacheMap.put(this.distributedKeyProvider.getKey(keyEntity), JsonHelper.writeValueAsString(entry.getValue()));
+        }
+        if (!stringCacheMap.isEmpty()) {
+            this.setExIntern(stringCacheMap, timeout);
         }
 
         return map;
@@ -393,17 +426,20 @@ public class RedisProvider {
 
         map.putAll(needCacheMap);
 
-        Map<String, AcceptType> stringCacheMap = new HashMap<>(needCacheMap.size());
+        Map<String, String> stringCacheMap = new HashMap<>(needCacheMap.size());
         for (Map.Entry<K, V> entry : needCacheMap.entrySet()) {
             if (entry.getValue() == null) {
                 continue;
             }
 
-            stringCacheMap.put(JsonHelper.writeValueAsString(entry.getKey()), AcceptType.of(JsonHelper.writeValueAsString(entry.getValue())));
+            stringCacheMap.put(JsonHelper.writeValueAsString(entry.getKey()), JsonHelper.writeValueAsString(entry.getValue()));
         }
 
-        this.hmset(keyEntity, stringCacheMap);
-        this.expire(keyEntity, timeout, timeUnit);
+        String hashKey = this.distributedKeyProvider.getKey(keyEntity);
+        if (!stringCacheMap.isEmpty()) {
+            this.template.opsForHash().putAll(hashKey, stringCacheMap);
+        }
+        this.template.expire(hashKey, timeout, timeUnit);
 
         return map;
     }
