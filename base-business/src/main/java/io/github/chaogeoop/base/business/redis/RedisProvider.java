@@ -74,7 +74,7 @@ public class RedisProvider {
             return null;
         }
 
-        return JsonHelper.readValue(value.toString(), clazz);
+        return JsonHelper.convert(value, clazz);
     }
 
     public void set(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, AcceptType type, Duration duration) {
@@ -138,7 +138,7 @@ public class RedisProvider {
                 continue;
             }
 
-            list.add(JsonHelper.readValue(value.toString(), clazz));
+            list.add(JsonHelper.convert(value, clazz));
         }
 
         return list;
@@ -151,7 +151,7 @@ public class RedisProvider {
             return null;
         }
 
-        return JsonHelper.readValue(value.toString(), clazz);
+        return JsonHelper.convert(value, clazz);
     }
 
     public <T> List<T> spop(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, int count, Class<T> clazz) {
@@ -172,7 +172,7 @@ public class RedisProvider {
                 continue;
             }
 
-            results.add(JsonHelper.readValue(value.toString(), clazz));
+            results.add(JsonHelper.convert(value, clazz));
         }
 
         return results;
@@ -219,7 +219,7 @@ public class RedisProvider {
                 continue;
             }
 
-            results.add(JsonHelper.readValue(value.toString(), clazz));
+            results.add(JsonHelper.convert(value, clazz));
         }
 
         return results;
@@ -245,7 +245,7 @@ public class RedisProvider {
             return null;
         }
 
-        return JsonHelper.readValue(result.toString(), clazz);
+        return JsonHelper.convert(result, clazz);
     }
 
 

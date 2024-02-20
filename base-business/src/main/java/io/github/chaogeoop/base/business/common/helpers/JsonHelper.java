@@ -54,9 +54,17 @@ public class JsonHelper {
         }
     }
 
-    public static <T> T convert(Object value, Class<T> type) {
+    public static <T> T convert(Object value, Class<T> clazz) {
         try {
-            return OM.convertValue(value, type);
+            if (value == null) {
+                return null;
+            }
+
+            if (value instanceof String) {
+                return readValue((String) value, clazz);
+            }
+
+            return OM.convertValue(value, clazz);
         } catch (Exception e) {
             throw new RuntimeException(e.getMessage(), e);
         }
@@ -64,6 +72,14 @@ public class JsonHelper {
 
     public static <T> T convert(Object value, TypeReference<T> type) {
         try {
+            if (value == null) {
+                return null;
+            }
+
+            if (value instanceof String) {
+                return readValue((String) value, type);
+            }
+
             return OM.convertValue(value, type);
         } catch (Exception e) {
             throw new RuntimeException(e.getMessage(), e);
