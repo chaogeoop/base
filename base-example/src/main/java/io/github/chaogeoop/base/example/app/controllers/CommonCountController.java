@@ -15,10 +15,7 @@ import com.google.common.collect.Sets;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
 
@@ -110,6 +107,13 @@ public class CommonCountController {
 
 
         return HttpResult.of(map);
+    }
+
+    @GetMapping("/freezeColdData")
+    public HttpResult<Boolean> freezeColdData() {
+        this.commonCountProvider.freezeColdData(3);
+
+        return HttpResult.of(true);
     }
 
     @Setter
