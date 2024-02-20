@@ -36,8 +36,9 @@ public class CommonCountController {
 
     @PostMapping("/upload")
     public HttpResult<Boolean> upload(@RequestBody BizInput input) {
-        List<MongoPersistEntity.PersistEntity> entities = new ArrayList<>();
-        for (int i = 0; i < 1000; i++) {
+        List<Map<CommonCountProvider.CountBizDate, Long>> bizDateIncMapList = new ArrayList<>();
+
+        for (int i = 0; i < 10000; i++) {
             Map<CommonCountProvider.CountBizDate, Long> map = new HashMap<>();
             for (String date : input.getDates()) {
                 for (CommonCountProvider.CountBiz biz : input.getBizList()) {
@@ -47,11 +48,12 @@ public class CommonCountController {
                 }
             }
 
-            MongoPersistEntity.PersistEntity persistEntity = this.commonCountProvider.insertPersistHistory(map);
-            entities.add(persistEntity);
+            bizDateIncMapList.add(map);
         }
 
-        this.persistProvider.persist(entities);
+        MongoPersistEntity.PersistEntity persistEntity = this.commonCountProvider.insertPersistHistory(bizDateIncMapList);
+
+        this.persistProvider.persist(Lists.newArrayList(persistEntity));
 
         return HttpResult.of(true);
     }
@@ -100,9 +102,9 @@ public class CommonCountController {
                         JsonHelper.writeValueAsString(bizDate)
                 );
 
-                Long value = this.redisProvider.get(keyEntity, Long.class);
+                boolean exists = this.redisProvider.exists(keyEntity);
 
-                map.get(JsonHelper.writeValueAsString(biz)).put(date, value != null);
+                map.get(JsonHelper.writeValueAsString(biz)).put(date, exists);
             }
         }
 

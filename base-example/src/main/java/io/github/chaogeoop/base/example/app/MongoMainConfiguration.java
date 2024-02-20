@@ -1,6 +1,5 @@
 package io.github.chaogeoop.base.example.app;
 
-import io.github.chaogeoop.base.business.mongodb.basic.BaseEnableMongoRepositories;
 import com.mongodb.ReadPreference;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,7 +18,7 @@ import org.springframework.data.mongodb.core.mapping.MongoMappingContext;
 @Configuration
 public class MongoMainConfiguration {
     @Value("${mongodb.main.connectUrl}")
-    private String primaryUrl;
+    private String url;
 
     @Primary
     @Bean("mongoMappingContext")
@@ -50,7 +49,7 @@ public class MongoMainConfiguration {
     @Primary
     @Bean("mongoFactory")
     public MongoDatabaseFactory dbFactory() throws Exception {
-        return new SimpleMongoClientDatabaseFactory(this.primaryUrl);
+        return new SimpleMongoClientDatabaseFactory(this.url);
     }
 
     @Bean
@@ -83,6 +82,6 @@ public class MongoMainConfiguration {
 
     @Bean("slaverMongoFactory")
     public MongoDatabaseFactory slaverDbFactory() {
-        return new SimpleMongoClientDatabaseFactory(this.primaryUrl);
+        return new SimpleMongoClientDatabaseFactory(this.url);
     }
 }

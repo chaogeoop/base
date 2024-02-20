@@ -311,14 +311,20 @@ public class CommonCountProvider {
     }
 
     public MongoPersistEntity.PersistEntity insertPersistHistory(Map<CountBizDate, Long> bizDateIncMap) {
+        return this.insertPersistHistory(Lists.newArrayList(bizDateIncMap));
+    }
+
+    public MongoPersistEntity.PersistEntity insertPersistHistory(List<Map<CountBizDate, Long>> bizDateIncMapList) {
         MongoPersistEntity.PersistEntity persistEntity = new MongoPersistEntity.PersistEntity();
 
         Map<String, RedisProvider.AcceptType> map = new HashMap<>();
-        for (Map.Entry<CountBizDate, Long> entry : bizDateIncMap.entrySet()) {
-            CommonCountPersistHistory data = CommonCountPersistHistory.of(entry.getKey(), entry.getValue());
-            String key = UUID.randomUUID().toString();
+        for (Map<CountBizDate, Long> bizDateIncMap : bizDateIncMapList) {
+            for (Map.Entry<CountBizDate, Long> entry : bizDateIncMap.entrySet()) {
+                CommonCountPersistHistory data = CommonCountPersistHistory.of(entry.getKey(), entry.getValue());
+                String key = UUID.randomUUID().toString();
 
-            map.put(key, RedisProvider.AcceptType.of(JsonHelper.writeValueAsString(data)));
+                map.put(key, RedisProvider.AcceptType.of(JsonHelper.writeValueAsString(data)));
+            }
         }
 
         MongoPersistEntity.CacheInterface historyStoreCache = new MongoPersistEntity.CacheInterface() {

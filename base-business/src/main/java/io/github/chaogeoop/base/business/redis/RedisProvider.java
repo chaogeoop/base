@@ -46,6 +46,10 @@ public class RedisProvider {
         return Boolean.TRUE.equals(this.template.delete(this.distributedKeyProvider.getKey(keyEntity)));
     }
 
+    public boolean exists(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity) {
+        return Boolean.TRUE.equals(this.template.hasKey(this.distributedKeyProvider.getKey(keyEntity)));
+    }
+
     public Long delete(Set<DistributedKeyProvider.KeyEntity<? extends DistributedKeyType>> keys) {
         return this.template.delete(CollectionHelper.map(keys, this.distributedKeyProvider::getKey));
     }
