@@ -37,7 +37,7 @@ public class CommonCountController {
 
         List<Map<CommonCountProvider.CountBizDate, Long>> bizDateIncMapList = new ArrayList<>();
 
-        for (int i = 0; i < 1; i++) {
+        for (int i = 0; i < 1000; i++) {
             int inc = rand.nextInt(10);
 
             Map<CommonCountProvider.CountBizDate, Long> map = new HashMap<>();

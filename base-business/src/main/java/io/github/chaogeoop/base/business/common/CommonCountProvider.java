@@ -63,8 +63,17 @@ public class CommonCountProvider {
             "        total = total + nextInc  \n" +
             "    end  \n" +
             "else  \n" +
-            "    local afterCache = redis.call(\"INCRBY\", nextKey, nextInc) \n" +
-            "    total = total + afterCache \n" +
+            "    if nextInc ~= 0 then  \n" +
+            "        local afterCache = redis.call(\"INCRBY\", nextKey, nextInc) \n" +
+            "        total = total + afterCache \n" +
+            "    else  \n" +
+            "        if redis.call(\"EXISTS\", nextKey) == 1 then  \n" +
+            "            local nextValue = tonumber(redis.call(\"GET\", nextKey))  \n" +
+            "            if nextValue ~= nil then  \n" +
+            "                total = total + nextValue  \n" +
+            "            end  \n" +
+            "        end  \n" +
+            "    end  \n" +
             "end  \n" +
             "redis.call(\"SETEX\", afterAllKey, timeout, tostring(total))  \n" +
             "return total";
