@@ -30,10 +30,17 @@ public class RedisProvider {
             "    return 0 " +
             "end ";
 
-
     public RedisProvider(RedisTemplate<String, Object> template, DistributedKeyProvider distributedKeyProvider) {
         this.template = template;
         this.distributedKeyProvider = distributedKeyProvider;
+    }
+
+    public String convertKeyEntityToString(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity) {
+        return this.distributedKeyProvider.getKey(keyEntity);
+    }
+
+    public RedisTemplate<String, Object> giveTemplate() {
+        return this.template;
     }
 
     //common
@@ -400,6 +407,7 @@ public class RedisProvider {
 
         return map;
     }
+
 
     @Getter
     public static class AcceptType {

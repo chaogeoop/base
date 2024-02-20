@@ -35,7 +35,7 @@ public class CommonCountController {
     public HttpResult<Boolean> upload(@RequestBody BizInput input) {
         List<Map<CommonCountProvider.CountBizDate, Long>> bizDateIncMapList = new ArrayList<>();
 
-        for (int i = 0; i < 10000; i++) {
+        for (int i = 0; i < 1; i++) {
             Map<CommonCountProvider.CountBizDate, Long> map = new HashMap<>();
             for (String date : input.getDates()) {
                 for (CommonCountProvider.CountBiz biz : input.getBizList()) {
