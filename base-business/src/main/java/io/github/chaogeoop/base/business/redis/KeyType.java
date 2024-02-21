@@ -6,7 +6,7 @@ import lombok.Setter;
 
 @Setter
 @Getter
-public abstract class DistributedKeyType {
+public abstract class KeyType {
     private String type;
 
     private String subType;
@@ -14,8 +14,8 @@ public abstract class DistributedKeyType {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof DistributedKeyType)) return false;
-        DistributedKeyType that = (DistributedKeyType) o;
+        if (!(o instanceof KeyType)) return false;
+        KeyType that = (KeyType) o;
         return Objects.equal(type, that.type) && Objects.equal(subType, that.subType);
     }
 

@@ -12,7 +12,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.data.redis.core.script.RedisScript;
 
-import javax.annotation.Nullable;
 import javax.lang.model.type.NullType;
 import java.time.Duration;
 import java.util.*;
@@ -41,7 +40,7 @@ public class RedisProvider {
         this.distributedKeyProvider = distributedKeyProvider;
     }
 
-    public String convertKeyEntityToString(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity) {
+    public String convertKeyEntityToString(KeyEntity<? extends KeyType> keyEntity) {
         return this.distributedKeyProvider.getKey(keyEntity);
     }
 
@@ -50,25 +49,25 @@ public class RedisProvider {
     }
 
     //common
-    public boolean expire(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, long timeout, TimeUnit timeUnit) {
+    public boolean expire(KeyEntity<? extends KeyType> keyEntity, long timeout, TimeUnit timeUnit) {
         Boolean success = this.template.expire(this.distributedKeyProvider.getKey(keyEntity), timeout, timeUnit);
         return Boolean.TRUE.equals(success);
     }
 
-    public boolean delete(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity) {
+    public boolean delete(KeyEntity<? extends KeyType> keyEntity) {
         return Boolean.TRUE.equals(this.template.delete(this.distributedKeyProvider.getKey(keyEntity)));
     }
 
-    public boolean exists(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity) {
+    public boolean exists(KeyEntity<? extends KeyType> keyEntity) {
         return Boolean.TRUE.equals(this.template.hasKey(this.distributedKeyProvider.getKey(keyEntity)));
     }
 
-    public Long delete(Set<DistributedKeyProvider.KeyEntity<? extends DistributedKeyType>> keys) {
+    public Long delete(Set<KeyEntity<? extends KeyType>> keys) {
         return this.template.delete(CollectionHelper.map(keys, this.distributedKeyProvider::getKey));
     }
 
     //valueOperator
-    public <T> T get(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, Class<T> clazz) {
+    public <T> T get(KeyEntity<? extends KeyType> keyEntity, Class<T> clazz) {
         Object value = this.template.opsForValue().get(this.distributedKeyProvider.getKey(keyEntity));
         if (value == null) {
             return null;
@@ -77,17 +76,17 @@ public class RedisProvider {
         return JsonHelper.convert(value, clazz);
     }
 
-    public void set(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, AcceptType type, Duration duration) {
+    public void set(KeyEntity<? extends KeyType> keyEntity, AcceptType type, Duration duration) {
         this.template.opsForValue().set(this.distributedKeyProvider.getKey(keyEntity), type.getValue(), duration);
     }
 
-    public void set(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, AcceptType type) {
+    public void set(KeyEntity<? extends KeyType> keyEntity, AcceptType type) {
         this.template.opsForValue().set(this.distributedKeyProvider.getKey(keyEntity), type.getValue());
     }
 
-    public void setEx(Map<DistributedKeyProvider.KeyEntity<? extends DistributedKeyType>, AcceptType> map, Duration duration) {
+    public void setEx(Map<KeyEntity<? extends KeyType>, AcceptType> map, Duration duration) {
         Map<String, Object> valueMap = new HashMap<>(map.size());
-        for (Map.Entry<DistributedKeyProvider.KeyEntity<? extends DistributedKeyType>, AcceptType> entry : map.entrySet()) {
+        for (Map.Entry<KeyEntity<? extends KeyType>, AcceptType> entry : map.entrySet()) {
             valueMap.put(this.distributedKeyProvider.getKey(entry.getKey()), entry.getValue().getValue());
         }
 
@@ -115,7 +114,7 @@ public class RedisProvider {
         this.template.execute(redisScript, keys, values);
     }
 
-    public long incrBy(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, long increment) {
+    public long incrBy(KeyEntity<? extends KeyType> keyEntity, long increment) {
         Long value = this.template.opsForValue().increment(this.distributedKeyProvider.getKey(keyEntity), increment);
         if (value == null) {
             value = 0L;
@@ -124,7 +123,7 @@ public class RedisProvider {
         return value;
     }
 
-    public <T> List<T> multiGet(List<DistributedKeyProvider.KeyEntity<? extends DistributedKeyType>> keys, Class<T> clazz) {
+    public <T> List<T> multiGet(List<KeyEntity<? extends KeyType>> keys, Class<T> clazz) {
         List<Object> values = this.template.opsForValue().multiGet(CollectionHelper.map(keys, this.distributedKeyProvider::getKey));
         if (values == null) {
             return CollectionHelper.map(keys, o -> null);
@@ -145,7 +144,7 @@ public class RedisProvider {
     }
 
     //setOperator
-    public <T> T spop(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, Class<T> clazz) {
+    public <T> T spop(KeyEntity<? extends KeyType> keyEntity, Class<T> clazz) {
         Object value = this.template.opsForSet().pop(this.distributedKeyProvider.getKey(keyEntity));
         if (value == null) {
             return null;
@@ -154,7 +153,7 @@ public class RedisProvider {
         return JsonHelper.convert(value, clazz);
     }
 
-    public <T> List<T> spop(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, int count, Class<T> clazz) {
+    public <T> List<T> spop(KeyEntity<? extends KeyType> keyEntity, int count, Class<T> clazz) {
         List<T> results = new ArrayList<>(count);
 
         List<Object> values = this.template.opsForSet().pop(this.distributedKeyProvider.getKey(keyEntity), count);
@@ -178,7 +177,7 @@ public class RedisProvider {
         return results;
     }
 
-    public long sadd(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, AcceptType type) {
+    public long sadd(KeyEntity<? extends KeyType> keyEntity, AcceptType type) {
         Long num = this.template.opsForSet().add(this.distributedKeyProvider.getKey(keyEntity), type.getValue());
         if (num == null) {
             num = 0L;
@@ -187,7 +186,7 @@ public class RedisProvider {
         return num;
     }
 
-    public long sadd(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, List<AcceptType> types) {
+    public long sadd(KeyEntity<? extends KeyType> keyEntity, List<AcceptType> types) {
         Long num = this.template.opsForSet().add(this.distributedKeyProvider.getKey(keyEntity), CollectionHelper.map(types, AcceptType::getValue).toArray());
         if (num == null) {
             num = 0L;
@@ -196,7 +195,7 @@ public class RedisProvider {
         return num;
     }
 
-    public Set<Object> smembers(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity) {
+    public Set<Object> smembers(KeyEntity<? extends KeyType> keyEntity) {
         Set<Object> members = this.template.opsForSet().members(this.distributedKeyProvider.getKey(keyEntity));
         if (members == null) {
             members = new HashSet<>();
@@ -207,7 +206,7 @@ public class RedisProvider {
 
 
     //hashOperator
-    public <T> List<T> hmget(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, List<String> hashKeys, Class<T> clazz) {
+    public <T> List<T> hmget(KeyEntity<? extends KeyType> keyEntity, List<String> hashKeys, Class<T> clazz) {
         HashOperations<String, String, Object> hashOperator = this.template.opsForHash();
 
         List<Object> values = hashOperator.multiGet(this.distributedKeyProvider.getKey(keyEntity), hashKeys);
@@ -225,7 +224,7 @@ public class RedisProvider {
         return results;
     }
 
-    public void hmset(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, Map<String, AcceptType> map) {
+    public void hmset(KeyEntity<? extends KeyType> keyEntity, Map<String, AcceptType> map) {
         Map<String, Object> valueMap = new HashMap<>(map.size());
 
         for (Map.Entry<String, AcceptType> entry : map.entrySet()) {
@@ -235,11 +234,11 @@ public class RedisProvider {
         this.template.opsForHash().putAll(this.distributedKeyProvider.getKey(keyEntity), valueMap);
     }
 
-    public Long hdel(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, Set<String> hashKeys) {
+    public Long hdel(KeyEntity<? extends KeyType> keyEntity, Set<String> hashKeys) {
         return this.template.opsForHash().delete(this.distributedKeyProvider.getKey(keyEntity), hashKeys.toArray());
     }
 
-    public <T> T hget(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, String hashKey, Class<T> clazz) {
+    public <T> T hget(KeyEntity<? extends KeyType> keyEntity, String hashKey, Class<T> clazz) {
         Object result = this.template.opsForHash().get(this.distributedKeyProvider.getKey(keyEntity), hashKey);
         if (result == null) {
             return null;
@@ -250,7 +249,7 @@ public class RedisProvider {
 
 
     //application
-    private boolean lock(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, String lockValue, Duration duration) {
+    private boolean lock(KeyEntity<? extends KeyType> keyEntity, String lockValue, Duration duration) {
         Boolean locked = this.template.opsForValue().setIfAbsent(this.distributedKeyProvider.getKey(keyEntity), lockValue, duration);
         if (!Boolean.TRUE.equals(locked)) {
             return false;
@@ -259,20 +258,20 @@ public class RedisProvider {
         return true;
     }
 
-    private boolean releaseLock(DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, String lockValue) {
+    private boolean releaseLock(KeyEntity<? extends KeyType> keyEntity, String lockValue) {
         RedisScript<Long> redisScript = new DefaultRedisScript<>(COMPARE_THEN_DEL_LUA, Long.class);
         Long result = this.template.execute(redisScript, Lists.newArrayList(this.distributedKeyProvider.getKey(keyEntity)), lockValue);
         return result != null && result > 0;
     }
 
-    public <T, M extends DistributedKeyType> T exeFuncWithLock(
-            DistributedKeyProvider.KeyEntity<M> keyEntity, Function<NullType, T> func
+    public <T, M extends KeyType> T exeFuncWithLock(
+            KeyEntity<M> keyEntity, Function<NullType, T> func
     ) {
         return this.exeFuncWithLock(keyEntity, Duration.ofSeconds(10), 10, func);
     }
 
     public <T> T exeFuncWithLock(
-            DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, Duration timeout, int maxRetry, Function<NullType, T> func
+            KeyEntity<? extends KeyType> keyEntity, Duration timeout, int maxRetry, Function<NullType, T> func
     ) {
         int time = 0;
 
@@ -304,7 +303,7 @@ public class RedisProvider {
 
     //以下方法只做为缓存用,值都被保存为string,不要对他们进行数字加减操作
     public <T> T getDataFromCache(
-            DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, Duration timeout, Class<T> clazz, Function<NullType, T> func
+            KeyEntity<? extends KeyType> keyEntity, Duration timeout, Class<T> clazz, Function<NullType, T> func
     ) {
         T obj = this.get(keyEntity, clazz);
 
@@ -319,7 +318,7 @@ public class RedisProvider {
     }
 
     public <T> List<T> getListDataFromCache(
-            DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity, Duration timeout, TypeReference<List<T>> type,
+            KeyEntity<? extends KeyType> keyEntity, Duration timeout, TypeReference<List<T>> type,
             Function<NullType, List<T>> func
     ) {
         List<T> list = null;
@@ -338,7 +337,7 @@ public class RedisProvider {
         return list;
     }
 
-    public <K, V, T extends DistributedKeyType> Map<K, V> getMapFromValueCache(
+    public <K, V, T extends KeyType> Map<K, V> getMapFromValueCache(
             T type, Duration timeout, Class<V> clazz, List<K> ids, Function<List<K>, Map<K, V>> func
     ) {
         Map<K, V> map = new HashMap<>(ids.size());
@@ -351,7 +350,7 @@ public class RedisProvider {
         List<V> cacheList = this.multiGet(
                 CollectionHelper.map(
                         ids,
-                        o -> DistributedKeyProvider.KeyEntity.of(type, JsonHelper.writeValueAsString(o))
+                        o -> KeyEntity.of(type, JsonHelper.writeValueAsString(o))
                 ),
                 clazz
         );
@@ -381,7 +380,7 @@ public class RedisProvider {
                 continue;
             }
 
-            DistributedKeyProvider.KeyEntity<T> keyEntity = DistributedKeyProvider.KeyEntity.of(type, JsonHelper.writeValueAsString(entry.getKey()));
+            KeyEntity<T> keyEntity = KeyEntity.of(type, JsonHelper.writeValueAsString(entry.getKey()));
 
             stringCacheMap.put(this.distributedKeyProvider.getKey(keyEntity), JsonHelper.writeValueAsString(entry.getValue()));
         }
@@ -393,14 +392,14 @@ public class RedisProvider {
     }
 
     public <K, V> Map<K, V> getMapFromHashCache(
-            List<K> ids, Class<V> clazz, DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity,
+            List<K> ids, Class<V> clazz, KeyEntity<? extends KeyType> keyEntity,
             Duration duration, Function<List<K>, Map<K, V>> func
     ) {
         return this.getMapFromHashCache(ids, clazz, keyEntity, (int) duration.getSeconds(), TimeUnit.SECONDS, func);
     }
 
     public <K, V> Map<K, V> getMapFromHashCache(
-            List<K> ids, Class<V> clazz, DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity,
+            List<K> ids, Class<V> clazz, KeyEntity<? extends KeyType> keyEntity,
             int timeout, TimeUnit timeUnit, Function<List<K>, Map<K, V>> func
     ) {
         Map<K, V> map = new HashMap<>(ids.size());

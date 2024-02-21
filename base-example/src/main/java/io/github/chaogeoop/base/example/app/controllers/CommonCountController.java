@@ -3,7 +3,7 @@ package io.github.chaogeoop.base.example.app.controllers;
 import io.github.chaogeoop.base.business.common.CommonCountProvider;
 import io.github.chaogeoop.base.business.mongodb.MongoPersistEntity;
 import io.github.chaogeoop.base.business.mongodb.PersistProvider;
-import io.github.chaogeoop.base.business.redis.DistributedKeyProvider;
+import io.github.chaogeoop.base.business.redis.KeyEntity;
 import io.github.chaogeoop.base.business.redis.RedisProvider;
 import io.github.chaogeoop.base.business.common.entities.HttpResult;
 import io.github.chaogeoop.base.business.common.helpers.CollectionHelper;
@@ -100,7 +100,7 @@ public class CommonCountController {
             for (String date : dates) {
                 CommonCountProvider.CountBizDate bizDate = biz.convertToBizDate(date);
 
-                DistributedKeyProvider.KeyEntity<CommonCountKeyRegister.CommonCountDistributedKey> keyEntity = DistributedKeyProvider.KeyEntity.of(
+                KeyEntity<CommonCountKeyRegister.CommonCountDistributedKey> keyEntity = KeyEntity.of(
                         CommonCountKeyRegister.COUNT_BIZ_DATE_CACHE_TYPE,
                         JsonHelper.writeValueAsString(bizDate)
                 );

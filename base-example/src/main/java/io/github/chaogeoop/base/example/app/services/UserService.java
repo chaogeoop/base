@@ -3,7 +3,7 @@ package io.github.chaogeoop.base.example.app.services;
 import io.github.chaogeoop.base.business.common.interfaces.IUserContext;
 import io.github.chaogeoop.base.business.common.interfaces.IUserContextConverter;
 import io.github.chaogeoop.base.business.mongodb.IPrimaryChooseStamp;
-import io.github.chaogeoop.base.business.redis.DistributedKeyProvider;
+import io.github.chaogeoop.base.business.redis.KeyEntity;
 import io.github.chaogeoop.base.business.redis.RedisProvider;
 import io.github.chaogeoop.base.business.common.helpers.JsonHelper;
 import io.github.chaogeoop.base.example.app.keyregisters.UserKeyRegister;
@@ -58,8 +58,8 @@ public class UserService implements IUserContextConverter, IPrimaryChooseStamp {
         return this.redisProvider.get(this.getPrimaryChooseStampKey(userContext), Long.class);
     }
 
-    private DistributedKeyProvider.KeyEntity<UserKeyRegister.UserDistributedKey> getPrimaryChooseStampKey(UserContext userContext) {
-        return DistributedKeyProvider.KeyEntity.of(
+    private KeyEntity<UserKeyRegister.UserDistributedKey> getPrimaryChooseStampKey(UserContext userContext) {
+        return KeyEntity.of(
                 UserKeyRegister.USER_PRIMARY_CHOOSE_CACHE_TYPE,
                 userContext.getUserId().toString()
         );

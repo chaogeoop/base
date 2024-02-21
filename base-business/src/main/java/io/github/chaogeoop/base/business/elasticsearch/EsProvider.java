@@ -4,10 +4,10 @@ import io.github.chaogeoop.base.business.common.entities.EsPageSplitter;
 import io.github.chaogeoop.base.business.common.interfaces.CheckResourceValidToHandleInterface;
 import io.github.chaogeoop.base.business.mongodb.BaseModel;
 import io.github.chaogeoop.base.business.mongodb.MongoPersistEntity;
-import io.github.chaogeoop.base.business.redis.DistributedKeyProvider;
+import io.github.chaogeoop.base.business.redis.KeyEntity;
 import io.github.chaogeoop.base.business.redis.RedisProvider;
 import io.github.chaogeoop.base.business.common.errors.BizException;
-import io.github.chaogeoop.base.business.redis.DistributedKeyType;
+import io.github.chaogeoop.base.business.redis.KeyType;
 import io.github.chaogeoop.base.business.common.entities.ListPage;
 import io.github.chaogeoop.base.business.common.helpers.CollectionHelper;
 import com.google.common.collect.Lists;
@@ -155,8 +155,8 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
     private void syncToEs(EsNameId logJudge) {
         CheckResourceValidToHandleInterface<SyncLog> entity = new CheckResourceValidToHandleInterface<>() {
             @Override
-            public DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> getLock() {
-                return DistributedKeyProvider.KeyEntity.of(
+            public KeyEntity<? extends KeyType> getLock() {
+                return KeyEntity.of(
                         redisAbout.getEsDataSyncLockType(),
                         logJudge.calTypeId()
                 );
@@ -201,9 +201,9 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
             return;
         }
 
-        DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity = null;
+        KeyEntity<? extends KeyType> keyEntity = null;
         if (this.redisAbout.getEsDataCacheType() != null) {
-            keyEntity = DistributedKeyProvider.KeyEntity.of(
+            keyEntity = KeyEntity.of(
                     this.redisAbout.getEsDataCacheType(),
                     log.calTypeId()
             );
@@ -257,7 +257,7 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
 
     @Setter
     @Getter
-    public static class RedisAbout<M extends DistributedKeyType> {
+    public static class RedisAbout<M extends KeyType> {
         private RedisProvider redisProvider;
 
         @Nullable
@@ -265,7 +265,7 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
 
         private M esDataSyncLockType;
 
-        public static <M extends DistributedKeyType> RedisAbout<M> of(
+        public static <M extends KeyType> RedisAbout<M> of(
                 RedisProvider redisProvider, @Nullable M cacheType, M lockType
         ) {
             RedisAbout<M> data = new RedisAbout<>();

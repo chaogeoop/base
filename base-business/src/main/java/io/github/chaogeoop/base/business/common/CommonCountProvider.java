@@ -3,10 +3,10 @@ package io.github.chaogeoop.base.business.common;
 import io.github.chaogeoop.base.business.common.interfaces.CheckResourceValidToHandleInterface;
 import io.github.chaogeoop.base.business.common.interfaces.DefaultResourceInterface;
 import io.github.chaogeoop.base.business.mongodb.*;
-import io.github.chaogeoop.base.business.redis.DistributedKeyProvider;
+import io.github.chaogeoop.base.business.redis.KeyEntity;
 import io.github.chaogeoop.base.business.redis.RedisProvider;
 import io.github.chaogeoop.base.business.common.errors.BizException;
-import io.github.chaogeoop.base.business.redis.DistributedKeyType;
+import io.github.chaogeoop.base.business.redis.KeyType;
 import io.github.chaogeoop.base.business.common.helpers.CollectionHelper;
 import io.github.chaogeoop.base.business.common.helpers.DateHelper;
 import io.github.chaogeoop.base.business.common.helpers.JsonHelper;
@@ -40,7 +40,7 @@ import java.util.function.Function;
 public class CommonCountProvider {
     private final PersistProvider persistProvider;
     private final MongoTemplate mongoTemplate;
-    private final RedisAbout<? extends DistributedKeyType> redisAbout;
+    private final RedisAbout<? extends KeyType> redisAbout;
     private final Function<List<String>, NullType> countHistorySender;
     private final Class<? extends CommonCountTotal> totalDbClazz;
     private final Class<? extends CommonCountDateLog> dateLogDbClazz;
@@ -81,7 +81,7 @@ public class CommonCountProvider {
 
     public CommonCountProvider(
             PersistProvider persistProvider,
-            RedisAbout<? extends DistributedKeyType> redisAbout,
+            RedisAbout<? extends KeyType> redisAbout,
             Function<List<String>, NullType> countHistorySender,
             Class<? extends CommonCountTotal> totalDbClazz,
             Class<? extends CommonCountDateLog> dateLogDbClazz
@@ -145,9 +145,9 @@ public class CommonCountProvider {
             hasTotalBizDateList.add(biz.convertToBizDate(log.getLatestCacheDate()));
         }
 
-        List<DistributedKeyProvider.KeyEntity<? extends DistributedKeyType>> latestCacheKeys = CollectionHelper.map(
+        List<KeyEntity<? extends KeyType>> latestCacheKeys = CollectionHelper.map(
                 hasTotalBizDateList,
-                o -> DistributedKeyProvider.KeyEntity.of(redisAbout.getCountBizDateCacheKeyType(), JsonHelper.writeValueAsString(o))
+                o -> KeyEntity.of(redisAbout.getCountBizDateCacheKeyType(), JsonHelper.writeValueAsString(o))
         );
 
         List<Long> cacheBizDateTotals = redisAbout.getRedisProvider().multiGet(latestCacheKeys, Long.class);
@@ -225,9 +225,9 @@ public class CommonCountProvider {
         }
 
         if (!needReadCacheBizDateList.isEmpty()) {
-            List<DistributedKeyProvider.KeyEntity<? extends DistributedKeyType>> needReadCacheKeys = CollectionHelper.map(
+            List<KeyEntity<? extends KeyType>> needReadCacheKeys = CollectionHelper.map(
                     needReadCacheBizDateList,
-                    o -> DistributedKeyProvider.KeyEntity.of(redisAbout.getCountBizDateCacheKeyType(), JsonHelper.writeValueAsString(o))
+                    o -> KeyEntity.of(redisAbout.getCountBizDateCacheKeyType(), JsonHelper.writeValueAsString(o))
             );
             List<Long> values = redisAbout.getRedisProvider().multiGet(needReadCacheKeys, Long.class);
             for (int i = 0; i < needReadCacheBizDateList.size(); i++) {
@@ -393,8 +393,8 @@ public class CommonCountProvider {
     public void persistCountByHistoryId(String id) {
         CheckResourceValidToHandleInterface<CommonCountPersistHistory> entity = new CheckResourceValidToHandleInterface<>() {
             @Override
-            public DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> getLock() {
-                return DistributedKeyProvider.KeyEntity.of(
+            public KeyEntity<? extends KeyType> getLock() {
+                return KeyEntity.of(
                         redisAbout.getCommonCountPersistHistoryLockType(),
                         id
                 );
@@ -444,7 +444,7 @@ public class CommonCountProvider {
             }
 
             this.redisAbout.getRedisProvider().exeFuncWithLock(
-                    DistributedKeyProvider.KeyEntity.of(this.redisAbout.getCommonCountTotalCreateLockType(), JsonHelper.writeValueAsString(biz)),
+                    KeyEntity.of(this.redisAbout.getCommonCountTotalCreateLockType(), JsonHelper.writeValueAsString(biz)),
                     M -> {
                         countBizEntity.setCommonCountTotal();
                         countBizEntity.initCacheAbout();
@@ -533,8 +533,8 @@ public class CommonCountProvider {
                 }
             }
 
-            List<DistributedKeyProvider.KeyEntity<? extends DistributedKeyType>> keyList =
-                    CollectionHelper.map(needReadBeforeLatestCacheTotalBizDates, o -> DistributedKeyProvider.KeyEntity.of(
+            List<KeyEntity<? extends KeyType>> keyList =
+                    CollectionHelper.map(needReadBeforeLatestCacheTotalBizDates, o -> KeyEntity.of(
                             redisAbout.getCountBizDateCacheKeyType(),
                             JsonHelper.writeValueAsString(o)
                     ));
@@ -727,7 +727,7 @@ public class CommonCountProvider {
                 @Override
                 public void persist() {
                     redisAbout.getRedisProvider().delete(
-                            DistributedKeyProvider.KeyEntity.of(redisAbout.getCommonCountTotalCacheKeyType(), JsonHelper.writeValueAsString(biz))
+                            KeyEntity.of(redisAbout.getCommonCountTotalCacheKeyType(), JsonHelper.writeValueAsString(biz))
                     );
                 }
 
@@ -747,7 +747,7 @@ public class CommonCountProvider {
 
                 @Override
                 public void rollback() {
-                    DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity = DistributedKeyProvider.KeyEntity.of(
+                    KeyEntity<? extends KeyType> keyEntity = KeyEntity.of(
                             redisAbout.getCountBizDateCacheKeyType(),
                             JsonHelper.writeValueAsString(biz.convertToBizDate(nextCacheDate))
                     );
@@ -760,7 +760,7 @@ public class CommonCountProvider {
                     }
 
                     redisAbout.getRedisProvider().delete(
-                            DistributedKeyProvider.KeyEntity.of(redisAbout.getCommonCountTotalCacheKeyType(), JsonHelper.writeValueAsString(biz))
+                            KeyEntity.of(redisAbout.getCountBizAfterAllTotalCacheKeyType(), JsonHelper.writeValueAsString(biz))
                     );
                 }
             };
@@ -769,17 +769,17 @@ public class CommonCountProvider {
         private Long incAndCacheAfterAllLua() {
             DefaultRedisScript<Long> redisScript = new DefaultRedisScript<>(COMMON_COUNT_LUA, Long.class);
 
-            DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> beforeKeyEntity = DistributedKeyProvider.KeyEntity.of(
+            KeyEntity<? extends KeyType> beforeKeyEntity = KeyEntity.of(
                     redisAbout.getCountBizDateCacheKeyType(),
                     JsonHelper.writeValueAsString(biz.convertToBizDate(beforeLatestCacheDate))
             );
 
-            DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> nextKeyEntity = DistributedKeyProvider.KeyEntity.of(
+            KeyEntity<? extends KeyType> nextKeyEntity = KeyEntity.of(
                     redisAbout.getCountBizDateCacheKeyType(),
                     JsonHelper.writeValueAsString(biz.convertToBizDate(nextCacheDate))
             );
 
-            DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> afterAllKeyEntity = DistributedKeyProvider.KeyEntity.of(
+            KeyEntity<? extends KeyType> afterAllKeyEntity = KeyEntity.of(
                     redisAbout.getCountBizAfterAllTotalCacheKeyType(),
                     JsonHelper.writeValueAsString(biz)
             );
@@ -810,7 +810,7 @@ public class CommonCountProvider {
 
         private MongoPersistEntity.CacheInterface getDeleteDateCountCache() {
             return new MongoPersistEntity.CacheInterface() {
-                private final DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> keyEntity = DistributedKeyProvider.KeyEntity.of(
+                private final KeyEntity<? extends KeyType> keyEntity = KeyEntity.of(
                         redisAbout.getCountBizDateCacheKeyType(),
                         JsonHelper.writeValueAsString(biz.convertToBizDate(beforeLatestCacheDate))
                 );
@@ -833,7 +833,7 @@ public class CommonCountProvider {
             }
 
             CommonCountTotal cache = redisAbout.getRedisProvider().get(
-                    DistributedKeyProvider.KeyEntity.of(redisAbout.getCommonCountTotalCacheKeyType(), JsonHelper.writeValueAsString(this.biz)),
+                    KeyEntity.of(redisAbout.getCommonCountTotalCacheKeyType(), JsonHelper.writeValueAsString(this.biz)),
                     CommonCountTotal.class
             );
             if (cache != null && this.currentDate.equals(cache.getLatestCacheDate()) && this.currentDate.equals(this.bizDate.getDate())) {
@@ -845,8 +845,8 @@ public class CommonCountProvider {
 
             DefaultResourceInterface<CommonCountTotal> entity = new DefaultResourceInterface<>() {
                 @Override
-                public DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> getLock() {
-                    return DistributedKeyProvider.KeyEntity.of(
+                public KeyEntity<? extends KeyType> getLock() {
+                    return KeyEntity.of(
                             redisAbout.getCommonCountTotalCreateLockType(),
                             JsonHelper.writeValueAsString(biz)
                     );
@@ -877,7 +877,7 @@ public class CommonCountProvider {
 
                 if (needUpdate) {
                     redisAbout.getRedisProvider().set(
-                            DistributedKeyProvider.KeyEntity.of(redisAbout.getCommonCountTotalCacheKeyType(), JsonHelper.writeValueAsString(this.biz)),
+                            KeyEntity.of(redisAbout.getCommonCountTotalCacheKeyType(), JsonHelper.writeValueAsString(this.biz)),
                             RedisProvider.AcceptType.of(JsonHelper.writeValueAsString(o)),
                             Duration.ofHours(1)
                     );
@@ -950,7 +950,7 @@ public class CommonCountProvider {
 
             //代表日志在上次缓存日期之后
             Long value = redisAbout.getRedisProvider().get(
-                    DistributedKeyProvider.KeyEntity.of(
+                    KeyEntity.of(
                             redisAbout.getCountBizDateCacheKeyType(),
                             JsonHelper.writeValueAsString(this.biz.convertToBizDate(this.beforeLatestCacheDate))
                     ),
@@ -1326,7 +1326,7 @@ public class CommonCountProvider {
 
     @Setter
     @Getter
-    public static class RedisAbout<M extends DistributedKeyType> {
+    public static class RedisAbout<M extends KeyType> {
         private RedisProvider redisProvider;
 
         private Duration afterAllTotalCacheDuration;
@@ -1341,12 +1341,12 @@ public class CommonCountProvider {
 
         private M countBizAfterAllTotalCacheKeyType;
 
-        private DistributedKeyProvider.KeyEntity<M> countHistoryHashKey;
+        private KeyEntity<M> countHistoryHashKey;
 
-        public static <M extends DistributedKeyType> RedisAbout<M> of(
+        public static <M extends KeyType> RedisAbout<M> of(
                 RedisProvider redisProvider, Duration afterAllTotalCacheDuration,
                 M commonCountTotalCacheKeyType, M commonCountTotalCreateLockType, M countBizDateCacheKeyType,
-                M commonCountPersistHistoryLockType, M countBizAfterAllTotalCacheKeyType, DistributedKeyProvider.KeyEntity<M> countHistoryHashKey
+                M commonCountPersistHistoryLockType, M countBizAfterAllTotalCacheKeyType, KeyEntity<M> countHistoryHashKey
         ) {
             RedisAbout<M> data = new RedisAbout<>();
 

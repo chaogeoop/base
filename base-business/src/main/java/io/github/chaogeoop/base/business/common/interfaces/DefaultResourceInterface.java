@@ -1,15 +1,15 @@
 package io.github.chaogeoop.base.business.common.interfaces;
 
-import io.github.chaogeoop.base.business.redis.DistributedKeyProvider;
+import io.github.chaogeoop.base.business.redis.KeyEntity;
 import io.github.chaogeoop.base.business.redis.RedisProvider;
-import io.github.chaogeoop.base.business.redis.DistributedKeyType;
+import io.github.chaogeoop.base.business.redis.KeyType;
 
 import javax.lang.model.type.NullType;
 import java.time.Duration;
 import java.util.function.Function;
 
 public interface DefaultResourceInterface<T> {
-    DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> getLock();
+    KeyEntity<? extends KeyType> getLock();
 
     T findExist();
 

@@ -1,6 +1,6 @@
 package io.github.chaogeoop.base.example.app.keyregisters;
 
-import io.github.chaogeoop.base.business.redis.DistributedKeyType;
+import io.github.chaogeoop.base.business.redis.KeyType;
 import io.github.chaogeoop.base.business.redis.IKeyRegister;
 
 import java.util.ArrayList;
@@ -23,7 +23,7 @@ public class EsKeyRegister implements IKeyRegister<EsKeyRegister.EsDistributedKe
         return list;
     }
 
-    public static class EsDistributedKey extends DistributedKeyType {
+    public static class EsDistributedKey extends KeyType {
         public static EsDistributedKey of(String type, String subType) {
             EsDistributedKey data = new EsDistributedKey();
 

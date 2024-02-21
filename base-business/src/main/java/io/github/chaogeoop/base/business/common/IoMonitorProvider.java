@@ -4,10 +4,10 @@ import io.github.chaogeoop.base.business.common.entities.IoStatistic;
 import io.github.chaogeoop.base.business.common.interfaces.DefaultResourceInterface;
 import io.github.chaogeoop.base.business.common.interfaces.IoMonitorPersist;
 import io.github.chaogeoop.base.business.mongodb.BaseModel;
-import io.github.chaogeoop.base.business.redis.DistributedKeyProvider;
+import io.github.chaogeoop.base.business.redis.KeyEntity;
 import io.github.chaogeoop.base.business.redis.RedisProvider;
 import io.github.chaogeoop.base.business.common.errors.BizException;
-import io.github.chaogeoop.base.business.redis.DistributedKeyType;
+import io.github.chaogeoop.base.business.redis.KeyType;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -23,13 +23,13 @@ import java.util.Map;
 import java.util.function.Function;
 
 public class IoMonitorProvider implements IoMonitorPersist {
-    private final RedisAbout<? extends DistributedKeyType> redisAbout;
+    private final RedisAbout<? extends KeyType> redisAbout;
     private final MongoTemplate mongoTemplate;
     private final Function<IoStatistic, NullType> ioMonitorSender;
     private final Class<? extends MonitorLog> logDbClazz;
 
     public IoMonitorProvider(
-            RedisAbout<? extends DistributedKeyType> redisAbout,
+            RedisAbout<? extends KeyType> redisAbout,
             MongoTemplate mongoTemplate,
             Function<IoStatistic, NullType> ioMonitorSender,
             Class<? extends MonitorLog> logDbClazz
@@ -55,8 +55,8 @@ public class IoMonitorProvider implements IoMonitorPersist {
         DefaultResourceInterface<MonitorLog> entity = new DefaultResourceInterface<>() {
 
             @Override
-            public DistributedKeyProvider.KeyEntity<? extends DistributedKeyType> getLock() {
-                return DistributedKeyProvider.KeyEntity.of(
+            public KeyEntity<? extends KeyType> getLock() {
+                return KeyEntity.of(
                         redisAbout.getIoMonitorPersistLockType(),
                         newLog.getFuncName()
                 );
@@ -142,12 +142,12 @@ public class IoMonitorProvider implements IoMonitorPersist {
 
     @Setter
     @Getter
-    public static class RedisAbout<M extends DistributedKeyType> {
+    public static class RedisAbout<M extends KeyType> {
         private RedisProvider redisProvider;
 
         private M ioMonitorPersistLockType;
 
-        public static <M extends DistributedKeyType> RedisAbout<M> of(RedisProvider redisProvider, M lockType) {
+        public static <M extends KeyType> RedisAbout<M> of(RedisProvider redisProvider, M lockType) {
             RedisAbout<M> data = new RedisAbout<>();
 
             data.setRedisProvider(redisProvider);
