@@ -460,9 +460,9 @@ public class CommonCountProvider {
             );
 
             if (CacheStateEnum.NO_CACHE.equals(countBizEntity.cacheState) && countBizEntity.inc > 0) {
-                MongoPersistEntity.PersistEntity fixAfterTotalEntity = this.insertPersistHistoryNow(Map.of(biz, 0L));
+                MongoPersistEntity.PersistEntity ensureAfterAllTotalEntity = this.insertPersistHistoryNow(Map.of(biz, 0L));
 
-                this.persistProvider.persist(Lists.newArrayList(fixAfterTotalEntity));
+                this.persistProvider.persist(Lists.newArrayList(ensureAfterAllTotalEntity));
             }
 
             return null;
