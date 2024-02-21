@@ -40,12 +40,10 @@ public class RedisProvider {
         this.distributedKeyProvider = distributedKeyProvider;
     }
 
-    public String convertKeyEntityToString(KeyEntity<? extends KeyType> keyEntity) {
-        return this.distributedKeyProvider.getKey(keyEntity);
-    }
+    public <T> T executeLua(DefaultRedisScript<T> redisScript, List<KeyEntity<? extends KeyType>> keyEntities, Object[] args) {
+        List<String> keys = CollectionHelper.map(keyEntities, this.distributedKeyProvider::getKey);
 
-    public RedisTemplate<String, Object> giveTemplate() {
-        return this.template;
+        return this.template.execute(redisScript, keys, args);
     }
 
     //common

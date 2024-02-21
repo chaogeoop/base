@@ -784,12 +784,9 @@ public class CommonCountProvider {
                     JsonHelper.writeValueAsString(biz)
             );
 
-            List<String> keys =
-                    CollectionHelper.map(Lists.newArrayList(beforeKeyEntity, nextKeyEntity, afterAllKeyEntity), o -> redisAbout.getRedisProvider().convertKeyEntityToString(o));
-
             Object[] values = new Long[]{this.getNextCacheInc(), this.getDbTotal(), redisAbout.getAfterAllTotalCacheDuration().toSeconds()};
 
-            return redisAbout.getRedisProvider().giveTemplate().execute(redisScript, keys, values);
+            return redisAbout.getRedisProvider().executeLua(redisScript, Lists.newArrayList(beforeKeyEntity, nextKeyEntity, afterAllKeyEntity), values);
         }
 
         private long getDbTotal() {
