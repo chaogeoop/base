@@ -521,7 +521,7 @@ public class CommonCountProvider {
 
         private void finishCacheAbout() {
             List<CountBizDate> needReadBeforeLatestCacheTotalBizDates = new ArrayList<>();
-            Map<CountBizDate, Long> bizDateBeforeLatestCacheTotalMap = new HashMap<>();
+            Map<CountBiz, Long> bizBeforeLatestCacheTotalMap = new HashMap<>();
 
             for (CountBizEntity countBizEntity : this.countBizEntityList) {
                 CacheStateEnum cacheState = countBizEntity.calCacheState();
@@ -547,17 +547,17 @@ public class CommonCountProvider {
                     value = 0L;
                 }
 
-                bizDateBeforeLatestCacheTotalMap.put(bizDate, value);
+                bizBeforeLatestCacheTotalMap.put(bizDate.extractBiz(), value);
             }
 
             for (CountBizEntity countBizEntity : this.countBizEntityList) {
-                countBizEntity.initCacheAbout(bizDateBeforeLatestCacheTotalMap.get(countBizEntity.bizDate));
+                countBizEntity.initCacheAbout(bizBeforeLatestCacheTotalMap.get(countBizEntity.biz));
             }
         }
 
         private void finishCommonCountDateLog() {
             List<CountBizDate> needCommonCountDateLogBizDates = new ArrayList<>();
-            Map<CountBizDate, CommonCountDateLog> bizDateCommonCountDateLogMap = new HashMap<>();
+            Map<CountBiz, CommonCountDateLog> bizCommonCountDateLogMap = new HashMap<>();
 
             for (CountBizEntity countBizEntity : this.countBizEntityList) {
                 if (CacheStateEnum.STAY.equals(countBizEntity.cacheState)) {
@@ -569,8 +569,8 @@ public class CommonCountProvider {
                     continue;
                 }
 
-                bizDateCommonCountDateLogMap.put(
-                        countBizEntity.bizDate, CommonCountDateLog.of(dateLogDbClazz, countBizEntity.biz, countBizEntity.beforeLatestCacheDate)
+                bizCommonCountDateLogMap.put(
+                        countBizEntity.bizDate.extractBiz(), CommonCountDateLog.of(dateLogDbClazz, countBizEntity.biz, countBizEntity.beforeLatestCacheDate)
                 );
             }
 
@@ -598,15 +598,15 @@ public class CommonCountProvider {
 
             for (CountBizDate bizDate : needCommonCountDateLogBizDates) {
                 CommonCountDateLog exist = existBizDateCommonCountDateLogMap.get(bizDate);
-                if (exist != null) {
+                if (exist == null) {
                     exist = CommonCountDateLog.of(dateLogDbClazz, bizDate);
                 }
 
-                bizDateCommonCountDateLogMap.put(bizDate, exist);
+                bizCommonCountDateLogMap.put(bizDate.extractBiz(), exist);
             }
 
             for (CountBizEntity countBizEntity : this.countBizEntityList) {
-                countBizEntity.commonCountDateLog = bizDateCommonCountDateLogMap.get(countBizEntity.bizDate);
+                countBizEntity.commonCountDateLog = bizCommonCountDateLogMap.get(countBizEntity.biz);
             }
         }
     }

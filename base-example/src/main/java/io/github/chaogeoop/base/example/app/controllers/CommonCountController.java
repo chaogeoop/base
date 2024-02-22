@@ -14,6 +14,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import lombok.Getter;
 import lombok.Setter;
+import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -122,11 +123,42 @@ public class CommonCountController {
         return HttpResult.of(true);
     }
 
+
+    @PostMapping("/distributeSafeInc")
+    public HttpResult<Map<String, Long>> distributeSafeInc(@RequestBody BizInput input) {
+        Map<String, Long> result = new HashMap<>();
+
+
+        Map<CommonCountProvider.CountBiz, Long> incMap = new HashMap<>();
+        for (CommonCountProvider.CountBiz countBiz : input.getBizList()) {
+            incMap.put(countBiz, 1L);
+        }
+
+        Date occurTime = new Date();
+        if (input.getOccur() != null) {
+            occurTime = DateHelper.parseStringDate(input.getOccur(), DateHelper.DateFormatEnum.fullUntilSecond);
+        }
+
+        Pair<MongoPersistEntity.PersistEntity, Map<CommonCountProvider.CountBiz, CommonCountProvider.CountBizEntity>> pair =
+                this.commonCountProvider.distributeSafeMultiBizCount(incMap, occurTime);
+
+        this.persistProvider.persist(Lists.newArrayList(pair.getLeft()));
+
+        for (Map.Entry<CommonCountProvider.CountBiz, CommonCountProvider.CountBizEntity> entry : pair.getRight().entrySet()) {
+            result.put(JsonHelper.writeValueAsString(entry.getKey()), entry.getValue().giveAfterAllTotal());
+        }
+
+        return HttpResult.of(result);
+    }
+
+
     @Setter
     @Getter
     public static class BizInput {
         private List<CommonCountProvider.CountBiz> bizList = new ArrayList<>();
 
         private List<String> dates = new ArrayList<>();
+
+        private String occur;
     }
 }
