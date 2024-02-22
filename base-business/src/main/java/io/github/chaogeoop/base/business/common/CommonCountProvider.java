@@ -1,5 +1,6 @@
 package io.github.chaogeoop.base.business.common;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.github.chaogeoop.base.business.common.interfaces.CheckResourceValidToHandleInterface;
 import io.github.chaogeoop.base.business.common.interfaces.DefaultResourceInterface;
 import io.github.chaogeoop.base.business.mongodb.*;
@@ -19,6 +20,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.bson.types.ObjectId;
+import org.springframework.data.annotation.Transient;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
@@ -314,7 +316,7 @@ public class CommonCountProvider {
 
                 Map<CountBizDate, Long> bizDateIncMap = new HashMap<>();
                 for (CommonCountTotal log : logs) {
-                    bizDateIncMap.put(log.convertToBizDate(currentDate), 0L);
+                    bizDateIncMap.put(log.extractBiz().convertToBizDate(currentDate), 0L);
                 }
 
                 MongoPersistEntity.PersistEntity persistEntity = this.insertPersistHistory(bizDateIncMap);
@@ -1009,12 +1011,21 @@ public class CommonCountProvider {
 
         private String date;
 
+        @JsonIgnore
+        private CountBiz biz;
+
         public CountBiz extractBiz() {
+            if (this.biz != null) {
+                return this.biz;
+            }
+
             CountBiz data = new CountBiz();
 
             data.setTypeId(this.typeId);
             data.setBizType(this.bizType);
             data.setSubBizType(this.subBizType);
+
+            this.biz = data;
 
             return data;
         }
@@ -1045,13 +1056,22 @@ public class CommonCountProvider {
 
         private String subBizType;
 
+        @JsonIgnore
+        private Map<String, CountBizDate> dateMap = new HashMap<>();
+
         public CountBizDate convertToBizDate(String date) {
+            if (this.dateMap.containsKey(date)) {
+                return this.dateMap.get(date);
+            }
+
             CountBizDate data = new CountBizDate();
 
             data.setTypeId(this.typeId);
             data.setBizType(this.bizType);
             data.setSubBizType(this.subBizType);
             data.setDate(date);
+
+            this.dateMap.put(date, data);
 
             return data;
         }
@@ -1101,6 +1121,10 @@ public class CommonCountProvider {
         @Field(value = "ds")
         private Boolean distributeSafe = true;
 
+        @JsonIgnore
+        @Transient
+        private CountBiz biz;
+
         public void setLatestCacheDate(String date) {
             this.latestCacheDate = date;
             this.latestCacheStamp = DateHelper.parseStringDate(date, DateHelper.DateFormatEnum.fullUntilDay).getTime();
@@ -1114,22 +1138,17 @@ public class CommonCountProvider {
         }
 
         public CountBiz extractBiz() {
+            if (this.biz != null) {
+                return this.biz;
+            }
+
             CountBiz data = new CountBiz();
 
             data.setTypeId(this.typeId);
             data.setBizType(this.bizType);
             data.setSubBizType(this.subBizType);
 
-            return data;
-        }
-
-        public CountBizDate convertToBizDate(String date) {
-            CountBizDate data = new CountBizDate();
-
-            data.setTypeId(this.typeId);
-            data.setBizType(this.bizType);
-            data.setSubBizType(this.subBizType);
-            data.setDate(date);
+            this.biz = data;
 
             return data;
         }
@@ -1207,6 +1226,14 @@ public class CommonCountProvider {
 
         private Long total = 0L;
 
+        @JsonIgnore
+        @Transient
+        private CountBiz biz;
+
+        @JsonIgnore
+        @Transient
+        private CountBizDate bizDate;
+
         @Override
         public String calSplitIndex() {
             Date date = DateHelper.parseStringDate(this.date, DateHelper.DateFormatEnum.fullUntilDay);
@@ -1215,22 +1242,34 @@ public class CommonCountProvider {
         }
 
         public CountBiz extractBiz() {
+            if (this.biz != null) {
+                return this.biz;
+            }
+
             CountBiz data = new CountBiz();
 
             data.setTypeId(this.typeId);
             data.setBizType(this.bizType);
             data.setSubBizType(this.subBizType);
 
+            this.biz = data;
+
             return data;
         }
 
         public CountBizDate extractBizDate() {
+            if (this.bizDate != null) {
+                return this.bizDate;
+            }
+
             CountBizDate data = new CountBizDate();
 
             data.setTypeId(this.typeId);
             data.setBizType(this.bizType);
             data.setSubBizType(this.subBizType);
             data.setDate(this.date);
+
+            this.bizDate = data;
 
             return data;
         }
@@ -1296,6 +1335,9 @@ public class CommonCountProvider {
 
         private String date;
 
+        @JsonIgnore
+        private CountBizDate bizDate;
+
         public static CommonCountPersistHistory of(CountBizDate bizDate, long inc) {
             CommonCountPersistHistory data = new CommonCountPersistHistory();
 
@@ -1309,12 +1351,18 @@ public class CommonCountProvider {
         }
 
         public CountBizDate extractBizDate() {
+            if (this.bizDate != null) {
+                return this.bizDate;
+            }
+
             CountBizDate data = new CountBizDate();
 
             data.setTypeId(this.typeId);
             data.setBizType(this.bizType);
             data.setSubBizType(this.subBizType);
             data.setDate(this.date);
+
+            this.bizDate = data;
 
             return data;
         }
