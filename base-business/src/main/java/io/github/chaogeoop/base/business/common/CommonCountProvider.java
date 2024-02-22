@@ -1,6 +1,7 @@
 package io.github.chaogeoop.base.business.common;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.github.chaogeoop.base.business.common.interfaces.CheckResourceValidToHandleInterface;
 import io.github.chaogeoop.base.business.common.interfaces.DefaultResourceInterface;
 import io.github.chaogeoop.base.business.mongodb.*;
@@ -1001,14 +1002,18 @@ public class CommonCountProvider {
 
     @Setter
     @Getter
-    @JsonPropertyOrder({"typeId", "bizType", "subBizType", "date"})
+    @JsonPropertyOrder({"t", "b", "s", "d"})
     public static class CountBizDate {
+        @JsonProperty("t")
         private String typeId;
 
+        @JsonProperty("b")
         private String bizType;
 
+        @JsonProperty("s")
         private String subBizType;
 
+        @JsonProperty("d")
         private String date;
 
         @JsonIgnore
@@ -1048,12 +1053,15 @@ public class CommonCountProvider {
 
     @Setter
     @Getter
-    @JsonPropertyOrder({"typeId", "bizType", "subBizType"})
+    @JsonPropertyOrder({"t", "b", "s"})
     public static class CountBiz {
+        @JsonProperty("t")
         private String typeId;
 
+        @JsonProperty("b")
         private String bizType;
 
+        @JsonProperty("s")
         private String subBizType;
 
         @JsonIgnore
