@@ -75,7 +75,7 @@ public class CommonCountController {
 
         Map<CommonCountProvider.CountBiz, Long> map = this.commonCountProvider.getBizTotalMap(countBizList);
         for (Map.Entry<CommonCountProvider.CountBiz, Long> entry : map.entrySet()) {
-            result.put(JsonHelper.writeValueAsString(entry.getKey()), entry.getValue());
+            result.put(entry.getKey().giveJson(), entry.getValue());
         }
 
         return HttpResult.of(result);
@@ -90,7 +90,7 @@ public class CommonCountController {
         Map<CommonCountProvider.CountBiz, Map<String, Long>> map = this.commonCountProvider.getBizLogsMap(countBizList, input.getDates());
 
         for (Map.Entry<CommonCountProvider.CountBiz, Map<String, Long>> entry : map.entrySet()) {
-            result.put(JsonHelper.writeValueAsString(entry.getKey()), entry.getValue());
+            result.put(entry.getKey().giveJson(), entry.getValue());
         }
 
         return HttpResult.of(result);
@@ -106,18 +106,18 @@ public class CommonCountController {
         dates.sort(Comparator.comparing(o -> DateHelper.parseStringDate(o, DateHelper.DateFormatEnum.fullUntilDay)));
 
         for (CommonCountProvider.CountBiz biz : countBizList) {
-            map.put(JsonHelper.writeValueAsString(biz), new LinkedHashMap<>());
+            map.put(biz.giveJson(), new LinkedHashMap<>());
             for (String date : dates) {
                 CommonCountProvider.CountBizDate bizDate = biz.convertToBizDate(date);
 
                 KeyEntity<CommonCountKeyRegister.CommonCountDistributedKey> keyEntity = KeyEntity.of(
                         CommonCountKeyRegister.COUNT_BIZ_DATE_CACHE_TYPE,
-                        JsonHelper.writeValueAsString(bizDate)
+                        bizDate.giveJson()
                 );
 
                 boolean exists = this.redisProvider.exists(keyEntity);
 
-                map.get(JsonHelper.writeValueAsString(biz)).put(date, exists);
+                map.get(biz.giveJson()).put(date, exists);
             }
         }
 
@@ -165,7 +165,7 @@ public class CommonCountController {
         this.persistProvider.persist(Lists.newArrayList(pair.getLeft(), pubPersistEntity));
 
         for (Map.Entry<CommonCountProvider.CountBiz, CommonCountProvider.CountBizEntity> entry : pair.getRight().entrySet()) {
-            result.put(JsonHelper.writeValueAsString(entry.getKey()), entry.getValue().giveAfterAllTotal());
+            result.put(entry.getKey().giveJson(), entry.getValue().giveAfterAllTotal());
         }
 
         return HttpResult.of(result);
