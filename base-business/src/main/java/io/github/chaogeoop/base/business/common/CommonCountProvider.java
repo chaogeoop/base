@@ -430,7 +430,7 @@ public class CommonCountProvider {
 
                 @Override
                 public void rollback() {
-
+                    redisAbout.getRedisProvider().hmset(redisAbout.getCountHistoryHashKey(), Map.of(id, RedisProvider.AcceptType.of(JsonHelper.writeValueAsString(o))));
                 }
             };
 
