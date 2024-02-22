@@ -82,6 +82,15 @@ public class RedisProvider {
         this.template.opsForValue().set(this.distributedKeyProvider.getKey(keyEntity), type.getValue());
     }
 
+    public void set(Map<KeyEntity<? extends KeyType>, AcceptType> map) {
+        Map<String, Object> valueMap = new HashMap<>(map.size());
+        for (Map.Entry<KeyEntity<? extends KeyType>, AcceptType> entry : map.entrySet()) {
+            valueMap.put(this.distributedKeyProvider.getKey(entry.getKey()), entry.getValue().getValue());
+        }
+
+        this.template.opsForValue().multiSet(valueMap);
+    }
+
     public void setEx(Map<KeyEntity<? extends KeyType>, AcceptType> map, Duration duration) {
         Map<String, Object> valueMap = new HashMap<>(map.size());
         for (Map.Entry<KeyEntity<? extends KeyType>, AcceptType> entry : map.entrySet()) {

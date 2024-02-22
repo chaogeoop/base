@@ -1,6 +1,7 @@
 package io.github.chaogeoop.base.example.app.controllers;
 
 import io.github.chaogeoop.base.business.common.CommonCountProvider;
+import io.github.chaogeoop.base.business.common.annotations.IoMonitor;
 import io.github.chaogeoop.base.business.common.annotations.UserInfo;
 import io.github.chaogeoop.base.business.mongodb.MongoPersistEntity;
 import io.github.chaogeoop.base.business.mongodb.PersistProvider;
@@ -133,6 +134,7 @@ public class CommonCountController {
 
 
     @PostMapping("/distributeSafeInc")
+    @IoMonitor(intervalTimes = 1)
     public HttpResult<Map<String, Long>> distributeSafeInc(@UserInfo UserContext userContext, @RequestBody BookInput input) {
         Set<CommonCountProvider.CountBiz> userCountBizList = CollectionHelper.map(input.getBookIds(), o -> getUserBookFavoriteBiz(userContext, o, input.getAction()));
         Set<CommonCountProvider.CountBiz> pubCountBizList = CollectionHelper.map(input.getBookIds(), o -> getBookFavoriteBiz(o, input.getAction()));

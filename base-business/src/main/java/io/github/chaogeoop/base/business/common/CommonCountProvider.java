@@ -437,7 +437,11 @@ public class CommonCountProvider {
             if (!countBizEntity.needLock) {
                 countBizEntity.initCacheAbout();
                 countBizEntity.setCommonCountDateLog();
-                countBizEntity.collectNeedPersist(persistEntity);
+                Map<KeyEntity<? extends KeyType>, Long> deleteRollbackMap = countBizEntity.collectNeedPersist(persistEntity);
+                MongoPersistEntity.CacheInterface deleteRollbackCache = this.getDeleteRollbackCache(deleteRollbackMap);
+                if (deleteRollbackCache != null) {
+                    persistEntity.getCacheList().add(deleteRollbackCache);
+                }
 
                 persistEntity.getCacheList().add(deleteHistoryCache);
 
@@ -452,7 +456,11 @@ public class CommonCountProvider {
                         countBizEntity.setCommonCountTotal();
                         countBizEntity.initCacheAbout();
                         countBizEntity.setCommonCountDateLog();
-                        countBizEntity.collectNeedPersist(persistEntity);
+                        Map<KeyEntity<? extends KeyType>, Long> deleteRollbackMap = countBizEntity.collectNeedPersist(persistEntity);
+                        MongoPersistEntity.CacheInterface deleteRollbackCache = this.getDeleteRollbackCache(deleteRollbackMap);
+                        if (deleteRollbackCache != null) {
+                            persistEntity.getCacheList().add(deleteRollbackCache);
+                        }
 
                         persistEntity.getCacheList().add(deleteHistoryCache);
 
@@ -499,11 +507,43 @@ public class CommonCountProvider {
         }
 
         MultiCountBizEntity multiCountBizEntity = new MultiCountBizEntity(countBizEntityList);
-        multiCountBizEntity.collectNeedPersist(persistEntity);
+        Map<KeyEntity<? extends KeyType>, Long> deleteRollbackMap = multiCountBizEntity.collectNeedPersist(persistEntity);
+        MongoPersistEntity.CacheInterface deleteRollbackCache = getDeleteRollbackCache(deleteRollbackMap);
+        if (deleteRollbackCache != null) {
+            persistEntity.getCacheList().add(deleteRollbackCache);
+        }
 
         Map<CountBiz, CountBizEntity> bizCountEntityMap = CollectionHelper.toMap(countBizEntityList, o -> o.biz);
 
         return Pair.of(persistEntity, bizCountEntityMap);
+    }
+
+    @Nullable
+    private MongoPersistEntity.CacheInterface getDeleteRollbackCache(Map<KeyEntity<? extends KeyType>, Long> map) {
+        if (map.isEmpty()) {
+            return null;
+        }
+
+        Map<KeyEntity<? extends KeyType>, RedisProvider.AcceptType> rollbackMap = new HashMap<>();
+        for (Map.Entry<KeyEntity<? extends KeyType>, Long> entry : map.entrySet()) {
+            if (entry.getValue() != null) {
+                rollbackMap.put(entry.getKey(), RedisProvider.AcceptType.of(entry.getValue()));
+            }
+        }
+
+        return new MongoPersistEntity.CacheInterface() {
+            @Override
+            public void persist() {
+                redisAbout.getRedisProvider().delete(map.keySet());
+            }
+
+            @Override
+            public void rollback() {
+                if (!rollbackMap.isEmpty()) {
+                    redisAbout.getRedisProvider().set(rollbackMap);
+                }
+            }
+        };
     }
 
     private class MultiCountBizEntity {
@@ -516,10 +556,15 @@ public class CommonCountProvider {
             this.finishCommonCountDateLog();
         }
 
-        public void collectNeedPersist(MongoPersistEntity.PersistEntity persistEntity) {
+        public Map<KeyEntity<? extends KeyType>, Long> collectNeedPersist(MongoPersistEntity.PersistEntity persistEntity) {
+            Map<KeyEntity<? extends KeyType>, Long> result = new HashMap<>();
+
             for (CountBizEntity countBizEntity : this.countBizEntityList) {
-                countBizEntity.collectNeedPersist(persistEntity);
+                Map<KeyEntity<? extends KeyType>, Long> tmp = countBizEntity.collectNeedPersist(persistEntity);
+                result.putAll(tmp);
             }
+
+            return result;
         }
 
         private void finishCacheAbout() {
@@ -679,13 +724,15 @@ public class CommonCountProvider {
             return this.afterAllTotal;
         }
 
-        private void collectNeedPersist(MongoPersistEntity.PersistEntity persistEntity) {
+        private Map<KeyEntity<? extends KeyType>, Long> collectNeedPersist(MongoPersistEntity.PersistEntity persistEntity) {
+            Map<KeyEntity<? extends KeyType>, Long> deleteRollbackMap = new HashMap<>();
+
             this.beforeDbTotal = this.commonCountTotal.getTotal();
 
             persistEntity.getCacheList().add(this.getIncCache());
 
             if (CacheStateEnum.STAY.equals(this.cacheState)) {
-                return;
+                return deleteRollbackMap;
             }
 
             if (this.commonCountDateLog.getId() == null) {
@@ -700,10 +747,10 @@ public class CommonCountProvider {
 
                     persistEntity.getDatabase().save(this.commonCountDateLog);
                     persistEntity.getDatabase().save(this.commonCountTotal);
-                    persistEntity.getCacheList().add(this.getDeleteCommonCountTotalCache());
+                    deleteRollbackMap.put(KeyEntity.of(redisAbout.getCommonCountTotalCacheKeyType(), JsonHelper.writeValueAsString(biz)), null);
                 }
 
-                return;
+                return deleteRollbackMap;
             }
 
             if (this.inc == 0) {
@@ -721,24 +768,16 @@ public class CommonCountProvider {
             this.commonCountDateLog.setTotal(this.beforeLatestCacheTotal);
 
             persistEntity.getDatabase().save(this.commonCountTotal);
-            persistEntity.getCacheList().add(this.getDeleteDateCountCache());
-            persistEntity.getCacheList().add(this.getDeleteCommonCountTotalCache());
-        }
+            deleteRollbackMap.put(
+                    KeyEntity.of(
+                            redisAbout.getCountBizDateCacheKeyType(),
+                            JsonHelper.writeValueAsString(biz.convertToBizDate(beforeLatestCacheDate))
+                    ),
+                    this.beforeLatestCacheTotal
+            );
+            deleteRollbackMap.put(KeyEntity.of(redisAbout.getCommonCountTotalCacheKeyType(), JsonHelper.writeValueAsString(biz)), null);
 
-        private MongoPersistEntity.CacheInterface getDeleteCommonCountTotalCache() {
-            return new MongoPersistEntity.CacheInterface() {
-                @Override
-                public void persist() {
-                    redisAbout.getRedisProvider().delete(
-                            KeyEntity.of(redisAbout.getCommonCountTotalCacheKeyType(), JsonHelper.writeValueAsString(biz))
-                    );
-                }
-
-                @Override
-                public void rollback() {
-
-                }
-            };
+            return deleteRollbackMap;
         }
 
         private MongoPersistEntity.CacheInterface getIncCache() {
@@ -806,25 +845,6 @@ public class CommonCountProvider {
             }
 
             return this.inc;
-        }
-
-        private MongoPersistEntity.CacheInterface getDeleteDateCountCache() {
-            return new MongoPersistEntity.CacheInterface() {
-                private final KeyEntity<? extends KeyType> keyEntity = KeyEntity.of(
-                        redisAbout.getCountBizDateCacheKeyType(),
-                        JsonHelper.writeValueAsString(biz.convertToBizDate(beforeLatestCacheDate))
-                );
-
-                @Override
-                public void persist() {
-                    redisAbout.getRedisProvider().delete(keyEntity);
-                }
-
-                @Override
-                public void rollback() {
-                    redisAbout.getRedisProvider().set(keyEntity, RedisProvider.AcceptType.of(beforeLatestCacheTotal));
-                }
-            };
         }
 
         private void setCommonCountTotal() {
