@@ -167,7 +167,7 @@ public class RedisProvider {
     public long incrBy(KeyEntity<? extends KeyType> keyEntity, long increment) {
         Long value = this.template.opsForValue().increment(this.distributedKeyProvider.getKey(keyEntity), increment);
         if (value == null) {
-            value = 0L;
+            throw new BizException("redis 返回错误");
         }
 
         return value;
@@ -214,11 +214,7 @@ public class RedisProvider {
 
         List<Object> values = this.template.opsForSet().pop(this.distributedKeyProvider.getKey(keyEntity), count);
         if (values == null) {
-            for (int i = 0; i < count; i++) {
-                results.add(null);
-            }
-
-            return results;
+            throw new BizException("redis 返回错误");
         }
 
         for (Object value : values) {
@@ -236,7 +232,7 @@ public class RedisProvider {
     public long sadd(KeyEntity<? extends KeyType> keyEntity, AcceptType type) {
         Long num = this.template.opsForSet().add(this.distributedKeyProvider.getKey(keyEntity), type.getValue());
         if (num == null) {
-            num = 0L;
+            throw new BizException("redis 返回错误");
         }
 
         return num;
@@ -245,7 +241,7 @@ public class RedisProvider {
     public long sadd(KeyEntity<? extends KeyType> keyEntity, List<AcceptType> types) {
         Long num = this.template.opsForSet().add(this.distributedKeyProvider.getKey(keyEntity), CollectionHelper.map(types, AcceptType::getValue).toArray());
         if (num == null) {
-            num = 0L;
+            throw new BizException("redis 返回错误");
         }
 
         return num;
@@ -254,7 +250,7 @@ public class RedisProvider {
     public Set<Object> smembers(KeyEntity<? extends KeyType> keyEntity) {
         Set<Object> members = this.template.opsForSet().members(this.distributedKeyProvider.getKey(keyEntity));
         if (members == null) {
-            members = new HashSet<>();
+            throw new BizException("redis 返回错误");
         }
 
         return members;
@@ -315,7 +311,7 @@ public class RedisProvider {
         Object[] values = new Object[fieldValueMap.size() + 1];
         values[values.length - 1] = key;
 
-        ArrayList<Map.Entry<String, Object>> list = Lists.newArrayList(fieldValueMap.entrySet());
+        List<Map.Entry<String, Object>> list = Lists.newArrayList(fieldValueMap.entrySet());
         for (int i = 0; i < list.size(); i++) {
             Map.Entry<String, Object> entry = list.get(i);
 
@@ -343,8 +339,8 @@ public class RedisProvider {
 
 
     //application
-    private boolean lock(KeyEntity<? extends KeyType> keyEntity, String lockValue, Duration duration) {
-        Boolean locked = this.template.opsForValue().setIfAbsent(this.distributedKeyProvider.getKey(keyEntity), lockValue, duration);
+    private boolean lock(String key, String lockValue, Duration duration) {
+        Boolean locked = this.template.opsForValue().setIfAbsent(key, lockValue, duration);
         if (!Boolean.TRUE.equals(locked)) {
             return false;
         }
@@ -352,9 +348,9 @@ public class RedisProvider {
         return true;
     }
 
-    private boolean releaseLock(KeyEntity<? extends KeyType> keyEntity, String lockValue) {
+    private boolean releaseLock(String key, String lockValue) {
         RedisScript<Long> redisScript = new DefaultRedisScript<>(COMPARE_THEN_DEL_LUA, Long.class);
-        Long result = this.template.execute(redisScript, Lists.newArrayList(this.distributedKeyProvider.getKey(keyEntity)), lockValue);
+        Long result = this.template.execute(redisScript, Lists.newArrayList(key), lockValue);
         return result != null && result > 0;
     }
 
@@ -367,13 +363,15 @@ public class RedisProvider {
     public <T> T exeFuncWithLock(
             KeyEntity<? extends KeyType> keyEntity, Duration timeout, int maxRetry, Function<NullType, T> func
     ) {
+        String key = this.distributedKeyProvider.getKey(keyEntity);
+
         int time = 0;
 
         String lockValue = UUID.randomUUID().toString();
 
         boolean acquiredLock = false;
         do {
-            acquiredLock = this.lock(keyEntity, lockValue, timeout);
+            acquiredLock = this.lock(key, lockValue, timeout);
             if (acquiredLock) {
                 break;
             }
@@ -391,7 +389,7 @@ public class RedisProvider {
         } catch (Exception e) {
             throw e;
         } finally {
-            this.releaseLock(keyEntity, lockValue);
+            this.releaseLock(key, lockValue);
         }
     }
 
@@ -454,12 +452,12 @@ public class RedisProvider {
             V value = cacheList.get(i);
             K key = ids.get(i);
 
-            if (value == null) {
-                needCacheIds.add(key);
+            if (value != null) {
+                map.put(key, value);
                 continue;
             }
 
-            map.put(key, value);
+            needCacheIds.add(key);
         }
 
         Map<K, V> needCacheMap = func.apply(needCacheIds);
