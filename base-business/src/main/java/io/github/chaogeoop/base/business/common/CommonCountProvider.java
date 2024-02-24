@@ -537,7 +537,7 @@ public class CommonCountProvider {
             @Override
             public void rollback() {
                 if (!rollbackMap.isEmpty()) {
-                    redisAbout.getRedisProvider().set(rollbackMap);
+                    redisAbout.getRedisProvider().multiSet(rollbackMap);
                 }
             }
         };

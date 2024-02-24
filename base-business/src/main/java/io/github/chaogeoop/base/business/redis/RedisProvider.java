@@ -35,6 +35,21 @@ public class RedisProvider {
             "end  \n" +
             "return 1";
 
+    private static final String MULTI_ABSENT_SET_EXPIRE = "local ttl = tonumber(ARGV[#ARGV]) \n" +
+            "for i, key in ipairs(KEYS) do  \n" +
+            "    local result = redis.call(\"SETNX\", key, ARGV[i])  \n" +
+            "    if result == 1 then   \n" +
+            "        redis.call(\"EXPIRE\", key, ttl)  \n" +
+            "        end  \n" +
+            "end  \n" +
+            "return 1";
+
+    private static final String ABSENT_HMSET = "local key = tostring(ARGV[#ARGV]) \n" +
+            "for i, field in ipairs(KEYS) do  \n" +
+            "    redis.call(\"HSETNX\", key, field, ARGV[i])  \n" +
+            "end  \n" +
+            "return 1";
+
     public RedisProvider(RedisTemplate<String, Object> template, DistributedKeyProvider distributedKeyProvider) {
         this.template = template;
         this.distributedKeyProvider = distributedKeyProvider;
@@ -86,7 +101,7 @@ public class RedisProvider {
         this.template.opsForValue().set(this.distributedKeyProvider.getKey(keyEntity), type.getValue());
     }
 
-    public void set(Map<KeyEntity<? extends KeyType>, AcceptType> map) {
+    public void multiSet(Map<KeyEntity<? extends KeyType>, AcceptType> map) {
         Map<String, Object> valueMap = new HashMap<>(map.size());
         for (Map.Entry<KeyEntity<? extends KeyType>, AcceptType> entry : map.entrySet()) {
             valueMap.put(this.distributedKeyProvider.getKey(entry.getKey()), entry.getValue().getValue());
@@ -95,7 +110,7 @@ public class RedisProvider {
         this.template.opsForValue().multiSet(valueMap);
     }
 
-    public void setEx(Map<KeyEntity<? extends KeyType>, AcceptType> map, Duration duration) {
+    public void multiSetEx(Map<KeyEntity<? extends KeyType>, AcceptType> map, Duration duration) {
         Map<String, Object> valueMap = new HashMap<>(map.size());
         for (Map.Entry<KeyEntity<? extends KeyType>, AcceptType> entry : map.entrySet()) {
             valueMap.put(this.distributedKeyProvider.getKey(entry.getKey()), entry.getValue().getValue());
@@ -104,11 +119,34 @@ public class RedisProvider {
         this.setExIntern(valueMap, duration);
     }
 
+    public void multiSetNxEx(Map<KeyEntity<? extends KeyType>, AcceptType> map, Duration duration) {
+        Map<String, Object> valueMap = new HashMap<>(map.size());
+        for (Map.Entry<KeyEntity<? extends KeyType>, AcceptType> entry : map.entrySet()) {
+            valueMap.put(this.distributedKeyProvider.getKey(entry.getKey()), entry.getValue().getValue());
+        }
+
+        this.setNxExIntern(valueMap, duration);
+    }
+
     private void setExIntern(Map<String, Object> map, Duration duration) {
         if (map.isEmpty()) {
             return;
         }
 
+        DefaultRedisScript<Long> redisScript = new DefaultRedisScript<>(MULTI_SET_EXPIRE, Long.class);
+        this.setExWithLuaIntern(redisScript, map, duration);
+    }
+
+    private void setNxExIntern(Map<String, Object> map, Duration duration) {
+        if (map.isEmpty()) {
+            return;
+        }
+
+        DefaultRedisScript<Long> redisScript = new DefaultRedisScript<>(MULTI_ABSENT_SET_EXPIRE, Long.class);
+        this.setExWithLuaIntern(redisScript, map, duration);
+    }
+
+    private <T> T setExWithLuaIntern(DefaultRedisScript<T> redisScript, Map<String, Object> map, Duration duration) {
         List<String> keys = new ArrayList<>(map.size());
         Object[] values = new Object[map.size() + 1];
         values[values.length - 1] = duration.toSeconds();
@@ -121,9 +159,9 @@ public class RedisProvider {
             values[i] = entry.getValue();
         }
 
-        DefaultRedisScript<Long> redisScript = new DefaultRedisScript<>(MULTI_SET_EXPIRE, Long.class);
-        this.template.execute(redisScript, keys, values);
+        return this.template.execute(redisScript, keys, values);
     }
+
 
     public long incrBy(KeyEntity<? extends KeyType> keyEntity, long increment) {
         Long value = this.template.opsForValue().increment(this.distributedKeyProvider.getKey(keyEntity), increment);
@@ -223,16 +261,16 @@ public class RedisProvider {
 
 
     //hashOperator
-    public <T> List<T> hmget(KeyEntity<? extends KeyType> keyEntity, List<String> hashKeys, Class<T> clazz) {
+    public <T> List<T> hmget(KeyEntity<? extends KeyType> keyEntity, List<String> fields, Class<T> clazz) {
         String key = this.distributedKeyProvider.getKey(keyEntity);
 
-        return this.hmgetIntern(key, hashKeys, clazz);
+        return this.hmgetIntern(key, fields, clazz);
     }
 
-    private <T> List<T> hmgetIntern(String key, List<String> hashKeys, Class<T> clazz) {
+    private <T> List<T> hmgetIntern(String key, List<String> fields, Class<T> clazz) {
         HashOperations<String, String, Object> hashOperator = this.template.opsForHash();
 
-        List<Object> values = hashOperator.multiGet(key, hashKeys);
+        List<Object> values = hashOperator.multiGet(key, fields);
         List<T> results = new ArrayList<>(values.size());
 
         for (Object value : values) {
@@ -248,21 +286,53 @@ public class RedisProvider {
     }
 
     public void hmset(KeyEntity<? extends KeyType> keyEntity, Map<String, AcceptType> map) {
-        Map<String, Object> valueMap = new HashMap<>(map.size());
+        Map<String, Object> fieldValueMap = new HashMap<>(map.size());
 
         for (Map.Entry<String, AcceptType> entry : map.entrySet()) {
-            valueMap.put(entry.getKey(), entry.getValue().getValue());
+            fieldValueMap.put(entry.getKey(), entry.getValue().getValue());
         }
 
-        this.template.opsForHash().putAll(this.distributedKeyProvider.getKey(keyEntity), valueMap);
+        this.template.opsForHash().putAll(this.distributedKeyProvider.getKey(keyEntity), fieldValueMap);
     }
 
-    public Long hdel(KeyEntity<? extends KeyType> keyEntity, Set<String> hashKeys) {
-        return this.template.opsForHash().delete(this.distributedKeyProvider.getKey(keyEntity), hashKeys.toArray());
+    public void hmsetNx(KeyEntity<? extends KeyType> keyEntity, Map<String, AcceptType> map) {
+        Map<String, Object> fieldValueMap = new HashMap<>(map.size());
+
+        for (Map.Entry<String, AcceptType> entry : map.entrySet()) {
+            fieldValueMap.put(entry.getKey(), entry.getValue().getValue());
+        }
+
+        this.hmsetNxIntern(this.distributedKeyProvider.getKey(keyEntity), fieldValueMap);
     }
 
-    public <T> T hget(KeyEntity<? extends KeyType> keyEntity, String hashKey, Class<T> clazz) {
-        Object result = this.template.opsForHash().get(this.distributedKeyProvider.getKey(keyEntity), hashKey);
+    private void hmsetNxIntern(String key, Map<String, Object> fieldValueMap) {
+        if (fieldValueMap.isEmpty()) {
+            return;
+        }
+
+        List<String> fields = new ArrayList<>(fieldValueMap.size());
+        Object[] values = new Object[fieldValueMap.size() + 1];
+        values[values.length - 1] = key;
+
+        ArrayList<Map.Entry<String, Object>> list = Lists.newArrayList(fieldValueMap.entrySet());
+        for (int i = 0; i < list.size(); i++) {
+            Map.Entry<String, Object> entry = list.get(i);
+
+            fields.add(entry.getKey());
+            values[i] = entry.getValue();
+        }
+
+        DefaultRedisScript<Long> redisScript = new DefaultRedisScript<>(ABSENT_HMSET, Long.class);
+        this.template.execute(redisScript, fields, values);
+    }
+
+
+    public Long hdel(KeyEntity<? extends KeyType> keyEntity, Set<String> fields) {
+        return this.template.opsForHash().delete(this.distributedKeyProvider.getKey(keyEntity), fields.toArray());
+    }
+
+    public <T> T hget(KeyEntity<? extends KeyType> keyEntity, String fields, Class<T> clazz) {
+        Object result = this.template.opsForHash().get(this.distributedKeyProvider.getKey(keyEntity), fields);
         if (result == null) {
             return null;
         }
@@ -409,7 +479,7 @@ public class RedisProvider {
             stringCacheMap.put(this.distributedKeyProvider.getKey(keyEntity), JsonHelper.writeValueAsString(entry.getValue()));
         }
         if (!stringCacheMap.isEmpty()) {
-            this.setExIntern(stringCacheMap, timeout);
+            this.setNxExIntern(stringCacheMap, timeout);
         }
 
         return map;
@@ -434,14 +504,14 @@ public class RedisProvider {
         List<V> cacheList = this.hmgetIntern(key, CollectionHelper.map(ids, JsonHelper::writeValueAsString), clazz);
 
         for (int i = 0; i < ids.size(); i++) {
-            K hashKey = ids.get(i);
+            K field = ids.get(i);
             V value = cacheList.get(i);
             if (value != null) {
-                map.put(hashKey, value);
+                map.put(field, value);
                 continue;
             }
 
-            needCacheIds.add(hashKey);
+            needCacheIds.add(field);
         }
 
         Map<K, V> needCacheMap = func.apply(needCacheIds);
@@ -451,7 +521,7 @@ public class RedisProvider {
 
         map.putAll(needCacheMap);
 
-        Map<String, String> stringCacheMap = new HashMap<>(needCacheMap.size());
+        Map<String, Object> stringCacheMap = new HashMap<>(needCacheMap.size());
         for (Map.Entry<K, V> entry : needCacheMap.entrySet()) {
             if (entry.getValue() == null) {
                 continue;
@@ -461,7 +531,7 @@ public class RedisProvider {
         }
 
         if (!stringCacheMap.isEmpty()) {
-            this.template.opsForHash().putAll(key, stringCacheMap);
+            this.hmsetNxIntern(key, stringCacheMap);
         }
         this.template.expire(key, timeout, timeUnit);
 
