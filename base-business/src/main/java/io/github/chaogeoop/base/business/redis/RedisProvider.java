@@ -66,7 +66,11 @@ public class RedisProvider {
 
     //valueOperator
     public <T> T get(KeyEntity<? extends KeyType> keyEntity, Class<T> clazz) {
-        Object value = this.template.opsForValue().get(this.distributedKeyProvider.getKey(keyEntity));
+        return this.get(this.distributedKeyProvider.getKey(keyEntity), clazz);
+    }
+
+    private <T> T get(String key, Class<T> clazz) {
+        Object value = this.template.opsForValue().get(key);
         if (value == null) {
             return null;
         }
@@ -130,8 +134,14 @@ public class RedisProvider {
         return value;
     }
 
-    public <T> List<T> multiGet(List<KeyEntity<? extends KeyType>> keys, Class<T> clazz) {
-        List<Object> values = this.template.opsForValue().multiGet(CollectionHelper.map(keys, this.distributedKeyProvider::getKey));
+    public <T> List<T> multiGet(List<KeyEntity<? extends KeyType>> keyEntities, Class<T> clazz) {
+        List<String> keys = CollectionHelper.map(keyEntities, this.distributedKeyProvider::getKey);
+
+        return this.multiGetIntern(keys, clazz);
+    }
+
+    private <T> List<T> multiGetIntern(List<String> keys, Class<T> clazz) {
+        List<Object> values = this.template.opsForValue().multiGet(keys);
         if (values == null) {
             return CollectionHelper.map(keys, o -> null);
         }
@@ -214,9 +224,15 @@ public class RedisProvider {
 
     //hashOperator
     public <T> List<T> hmget(KeyEntity<? extends KeyType> keyEntity, List<String> hashKeys, Class<T> clazz) {
+        String key = this.distributedKeyProvider.getKey(keyEntity);
+
+        return this.hmgetIntern(key, hashKeys, clazz);
+    }
+
+    private <T> List<T> hmgetIntern(String key, List<String> hashKeys, Class<T> clazz) {
         HashOperations<String, String, Object> hashOperator = this.template.opsForHash();
 
-        List<Object> values = hashOperator.multiGet(this.distributedKeyProvider.getKey(keyEntity), hashKeys);
+        List<Object> values = hashOperator.multiGet(key, hashKeys);
         List<T> results = new ArrayList<>(values.size());
 
         for (Object value : values) {
@@ -312,12 +328,13 @@ public class RedisProvider {
     public <T> T getDataFromCache(
             KeyEntity<? extends KeyType> keyEntity, Duration timeout, Class<T> clazz, Function<NullType, T> func
     ) {
-        T obj = this.get(keyEntity, clazz);
+        String key = this.distributedKeyProvider.getKey(keyEntity);
+        T obj = this.get(key, clazz);
 
         if (obj == null) {
             obj = func.apply(null);
             if (obj != null) {
-                this.set(keyEntity, AcceptType.of(JsonHelper.writeValueAsString(obj)), timeout);
+                this.template.opsForValue().setIfAbsent(key, JsonHelper.writeValueAsString(obj), timeout);
             }
         }
 
@@ -330,12 +347,13 @@ public class RedisProvider {
     ) {
         List<T> list = null;
 
-        String jsonStr = this.get(keyEntity, String.class);
+        String key = this.distributedKeyProvider.getKey(keyEntity);
+        String jsonStr = this.get(key, String.class);
 
         if (jsonStr == null) {
             list = func.apply(null);
             if (list != null) {
-                this.set(keyEntity, AcceptType.of(JsonHelper.writeValueAsString(list)), timeout);
+                this.template.opsForValue().setIfAbsent(key, JsonHelper.writeValueAsString(list), timeout);
             }
         } else {
             list = JsonHelper.readValue(jsonStr, type);
@@ -354,13 +372,12 @@ public class RedisProvider {
 
         List<K> needCacheIds = new ArrayList<>();
 
-        List<V> cacheList = this.multiGet(
-                CollectionHelper.map(
-                        ids,
-                        o -> KeyEntity.of(type, JsonHelper.writeValueAsString(o))
-                ),
-                clazz
+        List<String> keys = CollectionHelper.map(
+                ids,
+                o -> this.distributedKeyProvider.getKey(KeyEntity.of(type, JsonHelper.writeValueAsString(o)))
         );
+
+        List<V> cacheList = this.multiGetIntern(keys, clazz);
 
         for (int i = 0; i < cacheList.size(); i++) {
             V value = cacheList.get(i);
@@ -409,20 +426,22 @@ public class RedisProvider {
             List<K> ids, Class<V> clazz, KeyEntity<? extends KeyType> keyEntity,
             int timeout, TimeUnit timeUnit, Function<List<K>, Map<K, V>> func
     ) {
+        String key = this.distributedKeyProvider.getKey(keyEntity);
+
         Map<K, V> map = new HashMap<>(ids.size());
         List<K> needCacheIds = new ArrayList<>();
 
-        List<V> cacheList = this.hmget(keyEntity, CollectionHelper.map(ids, JsonHelper::writeValueAsString), clazz);
+        List<V> cacheList = this.hmgetIntern(key, CollectionHelper.map(ids, JsonHelper::writeValueAsString), clazz);
 
         for (int i = 0; i < ids.size(); i++) {
-            K key = ids.get(i);
+            K hashKey = ids.get(i);
             V value = cacheList.get(i);
             if (value != null) {
-                map.put(key, value);
+                map.put(hashKey, value);
                 continue;
             }
 
-            needCacheIds.add(key);
+            needCacheIds.add(hashKey);
         }
 
         Map<K, V> needCacheMap = func.apply(needCacheIds);
@@ -441,11 +460,10 @@ public class RedisProvider {
             stringCacheMap.put(JsonHelper.writeValueAsString(entry.getKey()), JsonHelper.writeValueAsString(entry.getValue()));
         }
 
-        String hashKey = this.distributedKeyProvider.getKey(keyEntity);
         if (!stringCacheMap.isEmpty()) {
-            this.template.opsForHash().putAll(hashKey, stringCacheMap);
+            this.template.opsForHash().putAll(key, stringCacheMap);
         }
-        this.template.expire(hashKey, timeout, timeUnit);
+        this.template.expire(key, timeout, timeUnit);
 
         return map;
     }
