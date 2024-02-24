@@ -1,5 +1,6 @@
 package io.github.chaogeoop.base.business.redis;
 
+import io.github.chaogeoop.base.business.common.errors.BizException;
 import io.github.chaogeoop.base.business.common.errors.DistributedLockedException;
 import io.github.chaogeoop.base.business.common.helpers.CollectionHelper;
 import io.github.chaogeoop.base.business.common.helpers.JsonHelper;
@@ -181,7 +182,7 @@ public class RedisProvider {
     private <T> List<T> multiGetIntern(List<String> keys, Class<T> clazz) {
         List<Object> values = this.template.opsForValue().multiGet(keys);
         if (values == null) {
-            return CollectionHelper.map(keys, o -> null);
+            throw new BizException("redis 返回错误");
         }
 
         List<T> list = new ArrayList<>(values.size());
