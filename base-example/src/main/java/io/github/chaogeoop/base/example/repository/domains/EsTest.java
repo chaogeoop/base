@@ -1,10 +1,6 @@
 package io.github.chaogeoop.base.example.repository.domains;
 
-import io.github.chaogeoop.base.business.common.helpers.JsonHelper;
-import io.github.chaogeoop.base.business.elasticsearch.EsField;
-import io.github.chaogeoop.base.business.elasticsearch.EsTypeEnum;
-import io.github.chaogeoop.base.business.elasticsearch.IBaseEs;
-import io.github.chaogeoop.base.business.elasticsearch.ISearch;
+import io.github.chaogeoop.base.business.elasticsearch.*;
 import io.github.chaogeoop.base.business.mongodb.BaseModel;
 import io.github.chaogeoop.base.business.mongodb.ISplitCollection;
 import lombok.Getter;
@@ -57,7 +53,7 @@ public class EsTest extends BaseModel implements ISplitCollection, IBaseEs, ISea
 
     @Override
     public String giveEsJson() {
-        return JsonHelper.writeValueAsString(this);
+        return EsHelper.convertToJson(this);
     }
 
     @Setter

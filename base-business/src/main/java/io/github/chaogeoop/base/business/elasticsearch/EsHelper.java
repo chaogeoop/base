@@ -34,6 +34,8 @@ public class EsHelper {
 
     private static final ConcurrentHashMap<Class<? extends IBaseEs>, EsFieldInfo> esFieldInfoMap = new ConcurrentHashMap<>();
 
+    private static final ConcurrentHashMap<Class<? extends IBaseEs>, FieldNode> esTreeMap = new ConcurrentHashMap<>();
+
     private static final Map<String, Map<String, String>> textKeywordField = Map.of("keyword", Map.of("type", "keyword"));
 
     public static <K extends ISearch<? extends IBaseEs>> String getBaseEsName(K data) {
@@ -361,6 +363,19 @@ public class EsHelper {
         return esFieldInfoMap.get(clazz).giveCopy();
     }
 
+    public static String convertToJson(IBaseEs data) {
+        FieldNode tree = esTreeMap.get(data.getClass());
+        if (tree == null) {
+            EsClazzEntity entity = new EsClazzEntity(data.getClass());
+            entity.initCache();
+            tree = esTreeMap.get(data.getClass());
+        }
+
+        LinkedHashMap<String, Object> result = tree.simplePickEsFieldFromData(data);
+
+        return JsonHelper.writeValueAsString(result);
+    }
+
     @Setter
     @Getter
     private static class ListNullJudge {
@@ -419,6 +434,10 @@ public class EsHelper {
             if (!esFieldInfoMap.containsKey(this.clazz)) {
                 esFieldInfoMap.put(this.clazz, this.getEsFieldInfo());
             }
+
+            if (!esTreeMap.containsKey(this.clazz)) {
+                esTreeMap.put(this.clazz, this.root);
+            }
         }
 
         public Map<String, Object> getMapping() {
@@ -453,7 +472,7 @@ public class EsHelper {
                     subTemp.put("fields", textKeywordField);
                 }
 
-                temp.put(child.getDetail().getFieldName(), subTemp);
+                temp.put(child.getDetail().getField().getName(), subTemp);
             }
 
             return result;
@@ -539,6 +558,8 @@ public class EsHelper {
 
                 checkClazz = checkClazz.getSuperclass();
             } while (!Object.class.equals(checkClazz));
+
+            parent.getChildren().sort(Comparator.comparing(o -> o.getDetail().getField().getName()));
         }
     }
 
@@ -581,7 +602,7 @@ public class EsHelper {
     @Setter
     @Getter
     public static class FieldDetail {
-        private String fieldName;
+        private Field field;
 
         private EsField esField;
 
@@ -591,11 +612,13 @@ public class EsHelper {
                 return null;
             }
 
+            field.setAccessible(true);
+
             FieldDetail data = new FieldDetail();
 
             EsField esField = field.getAnnotation(EsField.class);
 
-            data.setFieldName(field.getName());
+            data.setField(field);
             data.setEsField(esField);
 
             return data;
@@ -634,6 +657,43 @@ public class EsHelper {
             return sonNode;
         }
 
+        public LinkedHashMap<String, Object> simplePickEsFieldFromData(Object data) {
+            LinkedHashMap<String, Object> result = new LinkedHashMap<>();
+
+            for (FieldNode child : this.getChildren()) {
+                try {
+                    FieldDetail detail = child.getDetail();
+                    Object fieldValue = detail.getField().get(data);
+                    if (fieldValue == null) {
+                        result.put(detail.getField().getName(), null);
+                        continue;
+                    }
+
+                    if (EsTypeEnum.OBJECT.equals(detail.getEsField().type())) {
+                        LinkedHashMap<String, Object> inner = child.simplePickEsFieldFromData(fieldValue);
+                        result.put(detail.getField().getName(), inner);
+                        continue;
+                    }
+
+                    if (EsTypeEnum.NESTED.equals(detail.getEsField().type())) {
+                        List<LinkedHashMap<String, Object>> innerList = new ArrayList<>();
+                        for (Object o : (Collection) fieldValue) {
+                            LinkedHashMap<String, Object> inner = child.simplePickEsFieldFromData(o);
+                            innerList.add(inner);
+                        }
+                        result.put(detail.getField().getName(), innerList);
+                        continue;
+                    }
+
+                    result.put(detail.getField().getName(), fieldValue);
+                } catch (Exception e) {
+                    throw new BizException(e);
+                }
+            }
+
+            return result;
+        }
+
         public static FieldNode of(@Nullable FieldNode parentNode, @Nullable FieldDetail detail) {
             FieldNode data = new FieldNode();
 
@@ -648,7 +708,7 @@ public class EsHelper {
 
             StringBuilder fieldBuilder = new StringBuilder();
             for (FieldNode tmp : list) {
-                fieldBuilder.append(tmp.getDetail().getFieldName());
+                fieldBuilder.append(tmp.getDetail().getField().getName());
                 if (EsTypeEnum.NESTED.equals(tmp.getDetail().getEsField().type())) {
                     String path = fieldBuilder.toString();
                     pathList.add(path);
