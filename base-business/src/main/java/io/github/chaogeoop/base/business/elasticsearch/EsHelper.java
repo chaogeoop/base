@@ -40,20 +40,6 @@ public class EsHelper {
 
     private static final Map<String, Map<String, String>> textKeywordField = Map.of("keyword", Map.of("type", "keyword"));
 
-    public static String getBaseEsName(Class<? extends ISearch<? extends IBaseEs>> clazz) {
-        Class<? extends IBaseEs> esClazz = getBaseEsClazz(clazz);
-
-        if (esClazz.isAnnotationPresent(EsTableName.class)) {
-            return esClazz.getAnnotation(EsTableName.class).value();
-        }
-
-        if (BaseModel.class.isAssignableFrom(clazz)) {
-            return BaseModel.getBaseCollectionNameByClazz((Class<? extends BaseModel>) clazz);
-        }
-
-        throw new BizException("数据非法");
-    }
-
     public static BoolQueryBuilder convert(Query query, EsFieldInfo esFieldInfo, boolean needBoost) {
         return convert(query.getQueryObject(), esFieldInfo, needBoost);
     }
@@ -848,6 +834,20 @@ public class EsHelper {
 
             return info;
         }
+    }
+
+    private static String getBaseEsName(Class<? extends ISearch<? extends IBaseEs>> clazz) {
+        Class<? extends IBaseEs> esClazz = getBaseEsClazz(clazz);
+
+        if (esClazz.isAnnotationPresent(EsTableName.class)) {
+            return esClazz.getAnnotation(EsTableName.class).value();
+        }
+
+        if (BaseModel.class.isAssignableFrom(clazz)) {
+            return BaseModel.getBaseCollectionNameByClazz((Class<? extends BaseModel>) clazz);
+        }
+
+        throw new BizException("数据非法");
     }
 
     @Setter
