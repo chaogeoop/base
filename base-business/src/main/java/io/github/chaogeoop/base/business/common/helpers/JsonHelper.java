@@ -1,5 +1,6 @@
 package io.github.chaogeoop.base.business.common.helpers;
 
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,6 +13,7 @@ public class JsonHelper {
     static {
         OM.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
         OM.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
+        OM.configure(JsonParser.Feature.ALLOW_SINGLE_QUOTES, true);
     }
 
     public static <T> T readValue(String json, Class<T> clazz) {

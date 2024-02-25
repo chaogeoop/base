@@ -264,7 +264,7 @@ public class BaseModel extends RootModel {
 
 
         for (CompoundIndex compoundIndex : compoundIndexList) {
-            LinkedHashMap<String, Integer> map = JsonHelper.readValue(compoundIndex.def().replace("'", "\""), new TypeReference<>() {
+            LinkedHashMap<String, Integer> map = JsonHelper.readValue(compoundIndex.def(), new TypeReference<>() {
             });
             if (map == null) {
                 map = new LinkedHashMap<>();
