@@ -501,15 +501,13 @@ public class EsHelper {
 
         private List<FieldNode> buildNodeChain(FieldNode tailNode) {
             List<FieldNode> list = new ArrayList<>();
-            list.add(tailNode);
+            list.add(0, tailNode);
 
             FieldNode parentNode = tailNode.getParentNode();
             while (parentNode != this.root) {
-                list.add(parentNode);
+                list.add(0, parentNode);
                 parentNode = parentNode.getParentNode();
             }
-
-            Collections.reverse(list);
 
             return list;
         }
