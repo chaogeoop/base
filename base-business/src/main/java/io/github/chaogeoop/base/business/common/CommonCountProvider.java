@@ -97,29 +97,6 @@ public class CommonCountProvider {
         this.dateLogDbClazz = dateLogDbClazz;
     }
 
-    public Map<CountBiz, Long> getBizTotalMapWithCacheExcept(Set<CountBiz> allBizList, Set<CountBiz> skipCacheBizList) {
-        for (CountBiz skipCacheBiz : skipCacheBizList) {
-            if (!allBizList.contains(skipCacheBiz)) {
-                throw new BizException(String.format("skipList contains allList not contain: %s", skipCacheBiz));
-            }
-        }
-
-        List<CountBiz> list = Lists.newArrayList(allBizList);
-        list.removeIf(skipCacheBizList::contains);
-
-        return this.redisAbout.getRedisProvider().getMapFromValueCache(
-                this.redisAbout.getCountBizAfterAllTotalCacheKeyType(),
-                this.redisAbout.getAfterAllTotalCacheDuration(),
-                Long.class,
-                list,
-                needCacheList -> {
-                    Set<CountBiz> toCacheList = Sets.newHashSet(needCacheList);
-                    toCacheList.addAll(skipCacheBizList);
-                    return getBizTotalMapWithoutCache(toCacheList);
-                }
-        );
-    }
-
     public Map<CountBiz, Long> getBizTotalMap(Set<CountBiz> bizList) {
         List<CountBiz> list = Lists.newArrayList(bizList);
 
