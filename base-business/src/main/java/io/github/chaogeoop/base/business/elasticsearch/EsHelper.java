@@ -36,17 +36,19 @@ public class EsHelper {
 
     private static final ConcurrentHashMap<Class<? extends IBaseEs>, FieldNode> esTreeMap = new ConcurrentHashMap<>();
 
+    private static final ConcurrentHashMap<Class<? extends ISearch<? extends IBaseEs>>, Class<? extends IBaseEs>> searchBaseEsMap = new ConcurrentHashMap<>();
+
     private static final Map<String, Map<String, String>> textKeywordField = Map.of("keyword", Map.of("type", "keyword"));
 
-    public static <K extends ISearch<? extends IBaseEs>> String getBaseEsName(K data) {
-        Class<? extends IBaseEs> esClazz = data.giveEsModel();
+    public static String getBaseEsName(Class<? extends ISearch<? extends IBaseEs>> clazz) {
+        Class<? extends IBaseEs> esClazz = getBaseEsClazz(clazz);
 
         if (esClazz.isAnnotationPresent(EsTableName.class)) {
             return esClazz.getAnnotation(EsTableName.class).value();
         }
 
-        if (BaseModel.class.isAssignableFrom(data.getClass())) {
-            return BaseModel.getBaseCollectionNameByClazz((Class<? extends BaseModel>) data.getClass());
+        if (BaseModel.class.isAssignableFrom(clazz)) {
+            return BaseModel.getBaseCollectionNameByClazz((Class<? extends BaseModel>) clazz);
         }
 
         throw new BizException("数据非法");
@@ -339,19 +341,24 @@ public class EsHelper {
         }
     }
 
-    public static Map<String, Object> getMapping(Class<? extends IBaseEs> clazz) {
-        Map<String, Object> mapping = esMappingMap.get(clazz);
-        if (mapping != null) {
-            return Maps.newHashMap(mapping);
-        }
-
-        EsClazzEntity entity = new EsClazzEntity(clazz);
-        entity.initCache();
-
-        return Maps.newHashMap(esMappingMap.get(clazz));
+    public static EsFieldInfo getEsFieldInfo(Class<? extends ISearch<? extends IBaseEs>> clazz) {
+        return getEsFieldInfoIntern(getBaseEsClazz(clazz));
     }
 
-    public static EsFieldInfo getEsFieldInfo(Class<? extends IBaseEs> clazz) {
+    public static String convertToJson(ISearch<? extends IBaseEs> data) {
+        FieldNode tree = esTreeMap.get(data.giveEsModel());
+        if (tree == null) {
+            EsClazzEntity entity = new EsClazzEntity(data.giveEsModel());
+            entity.initCache();
+            tree = esTreeMap.get(data.giveEsModel());
+        }
+
+        LinkedHashMap<String, Object> result = tree.simplePickEsFieldFromData(data);
+
+        return JsonHelper.writeValueAsString(result);
+    }
+
+    private static EsFieldInfo getEsFieldInfoIntern(Class<? extends IBaseEs> clazz) {
         EsFieldInfo esFieldInfo = esFieldInfoMap.get(clazz);
         if (esFieldInfo != null) {
             return esFieldInfo.giveCopy();
@@ -363,17 +370,33 @@ public class EsHelper {
         return esFieldInfoMap.get(clazz).giveCopy();
     }
 
-    public static String convertToJson(IBaseEs data) {
-        FieldNode tree = esTreeMap.get(data.getClass());
-        if (tree == null) {
-            EsClazzEntity entity = new EsClazzEntity(data.getClass());
-            entity.initCache();
-            tree = esTreeMap.get(data.getClass());
+    private static Map<String, Object> getMapping(Class<? extends IBaseEs> clazz) {
+        Map<String, Object> mapping = esMappingMap.get(clazz);
+        if (mapping != null) {
+            return Maps.newHashMap(mapping);
         }
 
-        LinkedHashMap<String, Object> result = tree.simplePickEsFieldFromData(data);
+        EsClazzEntity entity = new EsClazzEntity(clazz);
+        entity.initCache();
 
-        return JsonHelper.writeValueAsString(result);
+        return Maps.newHashMap(esMappingMap.get(clazz));
+    }
+
+    private static Class<? extends IBaseEs> getBaseEsClazz(Class<? extends ISearch<? extends IBaseEs>> searchClazz) {
+        Class<? extends IBaseEs> clazz = searchBaseEsMap.get(searchClazz);
+        if (clazz == null) {
+            ISearch<? extends IBaseEs> data;
+            try {
+                data = searchClazz.getDeclaredConstructor().newInstance();
+            } catch (Exception e) {
+                throw new BizException("创建数据错误");
+            }
+
+            searchBaseEsMap.put(searchClazz, data.giveEsModel());
+            clazz = data.giveEsModel();
+        }
+
+        return clazz;
     }
 
     @Setter
@@ -740,7 +763,7 @@ public class EsHelper {
             return mainQuery;
         }
 
-        public static SearchInput of(Query query, String word, Class<? extends IBaseEs> clazz) {
+        public static SearchInput of(Query query, String word, Class<? extends ISearch<? extends IBaseEs>> clazz) {
             EsFieldInfo esFieldInfo = EsHelper.getEsFieldInfo(clazz);
 
             BoolQueryBuilder boolQueryBuilder = new BoolQueryBuilder().minimumShouldMatch(1);
@@ -783,7 +806,7 @@ public class EsHelper {
 
         EsInfoEntity(K data) {
             this.data = data;
-            this.baseEsName = EsHelper.getBaseEsName(this.data);
+            this.baseEsName = EsHelper.getBaseEsName((Class<? extends ISearch<? extends IBaseEs>>) this.data.getClass());
             this.accordEsName = this.calAccordEsName();
         }
 
@@ -868,16 +891,11 @@ public class EsHelper {
         public static InitEsUnit of(Class<? extends ISearch<? extends IBaseEs>> clazz) {
             InitEsUnit result = new InitEsUnit();
 
-            ISearch<? extends IBaseEs> data;
-            try {
-                data = clazz.getDeclaredConstructor().newInstance();
-            } catch (Exception e) {
-                throw new BizException("创建数据错误");
-            }
+            Class<? extends IBaseEs> baseEsClazz = EsHelper.getBaseEsClazz(clazz);
 
-            result.setBaseEsName(EsHelper.getBaseEsName(data));
-            result.setEsClazz(data.giveEsModel());
-            result.setMapping(JsonHelper.writeValueAsString(EsHelper.getMapping(data.giveEsModel())));
+            result.setBaseEsName(EsHelper.getBaseEsName(clazz));
+            result.setEsClazz(baseEsClazz);
+            result.setMapping(JsonHelper.writeValueAsString(EsHelper.getMapping(baseEsClazz)));
 
             return result;
         }
