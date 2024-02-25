@@ -1,5 +1,7 @@
 package io.github.chaogeoop.base.business.elasticsearch;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.google.common.collect.Sets;
 import io.github.chaogeoop.base.business.mongodb.BaseModel;
 import io.github.chaogeoop.base.business.mongodb.ISplitCollection;
@@ -35,6 +37,8 @@ public class EsHelper {
     private static final ConcurrentHashMap<Class<? extends IBaseEs>, EsFieldInfo> esFieldInfoMap = new ConcurrentHashMap<>();
 
     private static final ConcurrentHashMap<Class<? extends IBaseEs>, FieldNode> esTreeMap = new ConcurrentHashMap<>();
+
+    private static final ConcurrentHashMap<Class<? extends IBaseEs>, ObjectMapper> esSerializerMap = new ConcurrentHashMap<>();
 
     private static final ConcurrentHashMap<Class<? extends ISearch<? extends IBaseEs>>, Class<? extends IBaseEs>> searchBaseEsMap = new ConcurrentHashMap<>();
 
@@ -331,17 +335,31 @@ public class EsHelper {
         return getEsFieldInfoIntern(getBaseEsClazz(clazz));
     }
 
-    public static String convertToJson(IBaseEs data) {
-        FieldNode tree = esTreeMap.get(data.getClass());
-        if (tree == null) {
-            EsClazzEntity entity = new EsClazzEntity(data.getClass());
-            entity.initCache();
-            tree = esTreeMap.get(data.getClass());
+    public static FieldNode getTree(Class<? extends IBaseEs> clazz) {
+        FieldNode tree = esTreeMap.get(clazz);
+        if (tree != null) {
+            return tree;
         }
 
-        LinkedHashMap<String, Object> result = tree.simplePickEsFieldFromData(data);
+        EsClazzEntity entity = new EsClazzEntity(clazz);
+        entity.initCache();
 
-        return JsonHelper.writeValueAsString(result);
+        return esTreeMap.get(clazz);
+    }
+
+    public static String convertToJson(Class<? extends IBaseEs> clazz, IBaseEs data) {
+        ObjectMapper mapper = esSerializerMap.get(clazz);
+        if (mapper == null) {
+            EsClazzEntity entity = new EsClazzEntity(clazz);
+            entity.initCache();
+            mapper = esSerializerMap.get(clazz);
+        }
+
+        try {
+            return mapper.writeValueAsString(data);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private static EsFieldInfo getEsFieldInfoIntern(Class<? extends IBaseEs> clazz) {
@@ -444,9 +462,22 @@ public class EsHelper {
                 esFieldInfoMap.put(this.clazz, this.getEsFieldInfo());
             }
 
+            if (!esSerializerMap.containsKey(this.clazz)) {
+                esSerializerMap.put(this.clazz, this.getObjectMapper());
+            }
+
             if (!esTreeMap.containsKey(this.clazz)) {
                 esTreeMap.put(this.clazz, this.root);
             }
+        }
+
+        private ObjectMapper getObjectMapper() {
+            ObjectMapper mapper = new ObjectMapper();
+            SimpleModule module = new SimpleModule();
+            module.addSerializer(this.clazz, new IBaseEsClassSerializer<>(this.root));
+            mapper.registerModule(module);
+
+            return mapper;
         }
 
         public Map<String, Object> getMapping() {
@@ -545,7 +576,7 @@ public class EsHelper {
 
             Class<?> checkClazz = clazz;
             do {
-                for (Field field : clazz.getDeclaredFields()) {
+                for (Field field : checkClazz.getDeclaredFields()) {
                     FieldDetail detail = FieldDetail.of(field);
                     if (detail == null) {
                         continue;
@@ -664,43 +695,6 @@ public class EsHelper {
             this.children.add(sonNode);
 
             return sonNode;
-        }
-
-        public LinkedHashMap<String, Object> simplePickEsFieldFromData(Object data) {
-            LinkedHashMap<String, Object> result = new LinkedHashMap<>();
-
-            for (FieldNode child : this.getChildren()) {
-                try {
-                    FieldDetail detail = child.getDetail();
-                    Object fieldValue = detail.getField().get(data);
-                    if (fieldValue == null) {
-                        result.put(detail.getField().getName(), null);
-                        continue;
-                    }
-
-                    if (EsTypeEnum.OBJECT.equals(detail.getEsField().type())) {
-                        LinkedHashMap<String, Object> inner = child.simplePickEsFieldFromData(fieldValue);
-                        result.put(detail.getField().getName(), inner);
-                        continue;
-                    }
-
-                    if (EsTypeEnum.NESTED.equals(detail.getEsField().type())) {
-                        List<LinkedHashMap<String, Object>> innerList = new ArrayList<>();
-                        for (Object o : (Collection) fieldValue) {
-                            LinkedHashMap<String, Object> inner = child.simplePickEsFieldFromData(o);
-                            innerList.add(inner);
-                        }
-                        result.put(detail.getField().getName(), innerList);
-                        continue;
-                    }
-
-                    result.put(detail.getField().getName(), fieldValue);
-                } catch (Exception e) {
-                    throw new BizException(e);
-                }
-            }
-
-            return result;
         }
 
         public static FieldNode of(@Nullable FieldNode parentNode, @Nullable FieldDetail detail) {

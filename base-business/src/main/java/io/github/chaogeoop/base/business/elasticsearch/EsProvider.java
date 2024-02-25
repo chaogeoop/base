@@ -95,8 +95,8 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
                 esUnitInfoSet.add(esUnitInfo);
 
                 for (BaseModel obj : entry.getValue()) {
-                    IBaseEs esData = ((ISearch<? extends IBaseEs>) obj).giveEsData();
-                    if (esData == null) {
+                    String esJson = ((ISearch<?>) obj).giveEsJson();
+                    if (esJson == null) {
                         continue;
                     }
 
@@ -113,7 +113,7 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
                     log.setUniqueId(entry.getKey().getCollectionName().toLowerCase() + "_" + obj.getId().toString(16));
                     log.setVersion(obj.getV());
                     log.setAction(actionEntry.getKey());
-                    log.setData(EsHelper.convertToJson(esData));
+                    log.setData(esJson);
 
                     logs.add(log);
                 }
@@ -201,28 +201,19 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
             return;
         }
 
-        KeyEntity<? extends KeyType> keyEntity = null;
-        if (this.redisAbout.getEsDataCacheType() != null) {
-            keyEntity = KeyEntity.of(
-                    this.redisAbout.getEsDataCacheType(),
-                    log.calTypeId()
-            );
+        KeyEntity<? extends KeyType> keyEntity = KeyEntity.of(this.redisAbout.getEsDataCacheType(), log.calTypeId());
 
-            if (EsProvider.ActionEnum.UPDATE.equals(log.getAction())) {
-                String cacheStringData = this.redisAbout.getRedisProvider().get(keyEntity, String.class);
-                if (cacheStringData != null && cacheStringData.equals(log.getData())) {
-                    return;
-                }
+        if (EsProvider.ActionEnum.UPDATE.equals(log.getAction())) {
+            String cacheStringData = this.redisAbout.getRedisProvider().get(keyEntity, String.class);
+            if (cacheStringData != null && cacheStringData.equals(log.getData())) {
+                return;
             }
         }
 
         SimpleSearchHelper.insertOrUpdateData(this.jestClient, realEsName, log.getUniqueId(), log.getData());
 
-        if (keyEntity != null) {
-            this.redisAbout.getRedisProvider().set(keyEntity, RedisProvider.AcceptType.of(log.getData()), Duration.ofHours(1));
-        }
+        this.redisAbout.getRedisProvider().set(keyEntity, RedisProvider.AcceptType.of(log.getData()), Duration.ofHours(1));
     }
-
 
     public <E extends IBaseEs, M extends ISearch<E>> ListPage<E> pageQuery(QueryBuilder queryBuilder, EsPageSplitter esPageSplitter, List<M> judgeKeys) {
         if (judgeKeys.isEmpty()) {
@@ -260,13 +251,12 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
     public static class RedisAbout<M extends KeyType> {
         private RedisProvider redisProvider;
 
-        @Nullable
         private M esDataCacheType;
 
         private M esDataSyncLockType;
 
         public static <M extends KeyType> RedisAbout<M> of(
-                RedisProvider redisProvider, @Nullable M cacheType, M lockType
+                RedisProvider redisProvider, M cacheType, M lockType
         ) {
             RedisAbout<M> data = new RedisAbout<>();
 
