@@ -345,12 +345,12 @@ public class EsHelper {
         return getEsFieldInfoIntern(getBaseEsClazz(clazz));
     }
 
-    public static String convertToJson(ISearch<? extends IBaseEs> data) {
-        FieldNode tree = esTreeMap.get(data.giveEsModel());
+    public static String convertToJson(IBaseEs data) {
+        FieldNode tree = esTreeMap.get(data.getClass());
         if (tree == null) {
-            EsClazzEntity entity = new EsClazzEntity(data.giveEsModel());
+            EsClazzEntity entity = new EsClazzEntity(data.getClass());
             entity.initCache();
-            tree = esTreeMap.get(data.giveEsModel());
+            tree = esTreeMap.get(data.getClass());
         }
 
         LinkedHashMap<String, Object> result = tree.simplePickEsFieldFromData(data);

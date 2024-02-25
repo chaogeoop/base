@@ -95,8 +95,8 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
                 esUnitInfoSet.add(esUnitInfo);
 
                 for (BaseModel obj : entry.getValue()) {
-                    String esJson = ((ISearch<? extends IBaseEs>) obj).giveEsJson();
-                    if (esJson == null) {
+                    IBaseEs esData = ((ISearch<? extends IBaseEs>) obj).giveEsData();
+                    if (esData == null) {
                         continue;
                     }
 
@@ -113,7 +113,7 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
                     log.setUniqueId(entry.getKey().getCollectionName().toLowerCase() + "_" + obj.getId().toString(16));
                     log.setVersion(obj.getV());
                     log.setAction(actionEntry.getKey());
-                    log.setData(esJson);
+                    log.setData(EsHelper.convertToJson(esData));
 
                     logs.add(log);
                 }

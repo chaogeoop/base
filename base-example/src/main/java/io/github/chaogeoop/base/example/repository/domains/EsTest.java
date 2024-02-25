@@ -52,8 +52,8 @@ public class EsTest extends BaseModel implements ISplitCollection, IBaseEs, ISea
     }
 
     @Override
-    public String giveEsJson() {
-        return EsHelper.convertToJson(this);
+    public EsTest giveEsData() {
+        return this;
     }
 
     @Setter
