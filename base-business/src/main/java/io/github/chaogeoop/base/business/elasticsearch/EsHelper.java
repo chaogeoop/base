@@ -533,6 +533,9 @@ public class EsHelper {
                     this.tailNodes.add(sonNode);
                     if (EsTypeEnum.HAS_OBJECT_TYPES.contains(detail.getEsField().type())) {
                         this.buildTree(sonNode, detail.getEsField().objectType());
+                        if (sonNode.getChildren().isEmpty()) {
+                            parent.getChildren().remove(sonNode);
+                        }
                     }
                 }
 
