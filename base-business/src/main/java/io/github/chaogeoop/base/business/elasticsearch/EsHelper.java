@@ -522,9 +522,7 @@ public class EsHelper {
             EsFieldInfo data = new EsFieldInfo();
 
             for (FieldNode node : this.tailTermNodes) {
-                List<FieldNode> list = this.buildNodeChain(node);
-
-                Pair<String, List<String>> pair = FieldNode.getFiledNestedPathListPair(list);
+                Pair<String, List<String>> pair = node.getFiledNestedPathListPair();
                 String fieldName = pair.getLeft();
                 List<String> nestedPathList = pair.getRight();
 
@@ -537,9 +535,7 @@ public class EsHelper {
             }
 
             for (FieldNode node : this.tailTextNodes) {
-                List<FieldNode> list = this.buildNodeChain(node);
-
-                Pair<String, List<String>> pair = FieldNode.getFiledNestedPathListPair(list);
+                Pair<String, List<String>> pair = node.getFiledNestedPathListPair();
                 String fieldName = pair.getLeft();
                 List<String> nestedPathList = pair.getRight();
 
@@ -556,19 +552,6 @@ public class EsHelper {
             }
 
             return data;
-        }
-
-        private List<FieldNode> buildNodeChain(FieldNode tailNode) {
-            List<FieldNode> list = new ArrayList<>();
-            list.add(0, tailNode);
-
-            FieldNode parentNode = tailNode.getParentNode();
-            while (parentNode != this.root) {
-                list.add(0, parentNode);
-                parentNode = parentNode.getParentNode();
-            }
-
-            return list;
         }
 
         private void buildTree(FieldNode parent, Class<?> clazz) {
@@ -697,16 +680,9 @@ public class EsHelper {
             return sonNode;
         }
 
-        public static FieldNode of(@Nullable FieldNode parentNode, @Nullable FieldDetail detail) {
-            FieldNode data = new FieldNode();
+        public Pair<String, List<String>> getFiledNestedPathListPair() {
+            List<FieldNode> list = this.buildNodeChain();
 
-            data.setParentNode(parentNode);
-            data.setDetail(detail);
-
-            return data;
-        }
-
-        public static Pair<String, List<String>> getFiledNestedPathListPair(List<FieldNode> list) {
             List<String> pathList = new ArrayList<>();
 
             StringBuilder fieldBuilder = new StringBuilder();
@@ -722,6 +698,28 @@ public class EsHelper {
             String field = fieldBuilder.deleteCharAt(fieldBuilder.length() - 1).toString();
 
             return Pair.of(field, pathList);
+        }
+
+        private List<FieldNode> buildNodeChain() {
+            List<FieldNode> list = new ArrayList<>();
+            list.add(0, this);
+
+            FieldNode parentNode = this.getParentNode();
+            while (parentNode.getParentNode() != null) {
+                list.add(0, parentNode);
+                parentNode = parentNode.getParentNode();
+            }
+
+            return list;
+        }
+
+        public static FieldNode of(@Nullable FieldNode parentNode, @Nullable FieldDetail detail) {
+            FieldNode data = new FieldNode();
+
+            data.setParentNode(parentNode);
+            data.setDetail(detail);
+
+            return data;
         }
     }
 
