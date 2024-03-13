@@ -5,7 +5,7 @@ import io.github.chaogeoop.base.business.common.interfaces.CheckResourceValidToH
 import io.github.chaogeoop.base.business.mongodb.BaseModel;
 import io.github.chaogeoop.base.business.mongodb.MongoPersistEntity;
 import io.github.chaogeoop.base.business.redis.KeyEntity;
-import io.github.chaogeoop.base.business.redis.RedisProvider;
+import io.github.chaogeoop.base.business.redis.StrictRedisProvider;
 import io.github.chaogeoop.base.business.common.errors.BizException;
 import io.github.chaogeoop.base.business.redis.KeyType;
 import io.github.chaogeoop.base.business.common.entities.ListPage;
@@ -179,7 +179,7 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
             }
         };
 
-        entity.handle(this.redisAbout.getRedisProvider(), o -> {
+        entity.handle(this.redisAbout.getStrictRedisProvider(), o -> {
             syncToEs(o);
 
             Query query = new Query();
@@ -206,7 +206,7 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
             keyEntity = KeyEntity.of(this.redisAbout.getEsDataCacheType(), log.calTypeId());
 
             if (EsProvider.ActionEnum.UPDATE.equals(log.getAction())) {
-                String cacheStringData = this.redisAbout.getRedisProvider().get(keyEntity, String.class);
+                String cacheStringData = this.redisAbout.getStrictRedisProvider().get(keyEntity, String.class);
                 if (cacheStringData != null && cacheStringData.equals(log.getData())) {
                     return;
                 }
@@ -216,7 +216,7 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
         SimpleSearchHelper.insertOrUpdateData(this.jestClient, realEsName, log.getUniqueId(), log.getData());
 
         if (keyEntity != null) {
-            this.redisAbout.getRedisProvider().set(keyEntity, RedisProvider.AcceptType.of(log.getData()), Duration.ofHours(1));
+            this.redisAbout.getStrictRedisProvider().set(keyEntity, StrictRedisProvider.AcceptType.of(log.getData()), Duration.ofHours(1));
         }
     }
 
@@ -254,7 +254,7 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
     @Setter
     @Getter
     public static class RedisAbout<M extends KeyType> {
-        private RedisProvider redisProvider;
+        private StrictRedisProvider strictRedisProvider;
 
         @Nullable
         private M esDataCacheType;
@@ -262,11 +262,11 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
         private M esDataSyncLockType;
 
         public static <M extends KeyType> RedisAbout<M> of(
-                RedisProvider redisProvider, @Nullable M cacheType, M lockType
+                StrictRedisProvider strictRedisProvider, @Nullable M cacheType, M lockType
         ) {
             RedisAbout<M> data = new RedisAbout<>();
 
-            data.setRedisProvider(redisProvider);
+            data.setStrictRedisProvider(strictRedisProvider);
             data.setEsDataCacheType(cacheType);
             data.setEsDataSyncLockType(lockType);
 

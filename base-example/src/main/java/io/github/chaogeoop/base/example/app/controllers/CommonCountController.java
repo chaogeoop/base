@@ -6,14 +6,12 @@ import io.github.chaogeoop.base.business.common.annotations.UserInfo;
 import io.github.chaogeoop.base.business.mongodb.MongoPersistEntity;
 import io.github.chaogeoop.base.business.mongodb.PersistProvider;
 import io.github.chaogeoop.base.business.redis.KeyEntity;
-import io.github.chaogeoop.base.business.redis.RedisProvider;
+import io.github.chaogeoop.base.business.redis.StrictRedisProvider;
 import io.github.chaogeoop.base.business.common.entities.HttpResult;
 import io.github.chaogeoop.base.business.common.helpers.CollectionHelper;
 import io.github.chaogeoop.base.business.common.helpers.DateHelper;
-import io.github.chaogeoop.base.business.common.helpers.JsonHelper;
 import io.github.chaogeoop.base.example.app.keyregisters.CommonCountKeyRegister;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import io.github.chaogeoop.base.example.repository.entities.UserContext;
 import lombok.Getter;
 import lombok.Setter;
@@ -33,7 +31,7 @@ public class CommonCountController {
     private PersistProvider persistProvider;
 
     @Autowired
-    private RedisProvider redisProvider;
+    private StrictRedisProvider strictRedisProvider;
 
     @PostMapping("/upload")
     public HttpResult<Boolean> upload(@RequestBody BookInput input) {
@@ -115,7 +113,7 @@ public class CommonCountController {
                         bizDate.giveJson()
                 );
 
-                boolean exists = this.redisProvider.exists(keyEntity);
+                boolean exists = this.strictRedisProvider.exists(keyEntity);
 
                 map.get(biz.giveJson()).put(date, exists);
             }
@@ -138,7 +136,7 @@ public class CommonCountController {
     public HttpResult<Map<String, Long>> distributeSafeInc(@UserInfo UserContext userContext, @RequestBody BookInput input) {
         KeyEntity<CommonCountKeyRegister.CommonCountDistributedKey> lock = KeyEntity.of(CommonCountKeyRegister.USER_COLLECT_BOOKS_LOCK_TYPE, userContext.getUserId().toString());
 
-        Map<String, Long> value = this.redisProvider.exeFuncWithLock(lock, m -> {
+        Map<String, Long> value = this.strictRedisProvider.exeFuncWithLock(lock, m -> {
             Set<CommonCountProvider.CountBiz> userCountBizList = CollectionHelper.map(input.getBookIds(), o -> getUserBookFavoriteBiz(userContext, o, input.getAction()));
             Set<CommonCountProvider.CountBiz> pubCountBizList = CollectionHelper.map(input.getBookIds(), o -> getBookFavoriteBiz(o, input.getAction()));
 

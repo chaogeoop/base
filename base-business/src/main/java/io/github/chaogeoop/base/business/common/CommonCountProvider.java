@@ -7,7 +7,7 @@ import io.github.chaogeoop.base.business.common.interfaces.DefaultResourceInterf
 import io.github.chaogeoop.base.business.mongodb.*;
 import io.github.chaogeoop.base.business.redis.DistributedKeyProvider;
 import io.github.chaogeoop.base.business.redis.KeyEntity;
-import io.github.chaogeoop.base.business.redis.RedisProvider;
+import io.github.chaogeoop.base.business.redis.StrictRedisProvider;
 import io.github.chaogeoop.base.business.common.errors.BizException;
 import io.github.chaogeoop.base.business.redis.KeyType;
 import io.github.chaogeoop.base.business.common.helpers.CollectionHelper;
@@ -101,7 +101,7 @@ public class CommonCountProvider {
     public Map<CountBiz, Long> getBizTotalMap(Set<CountBiz> bizList) {
         List<CountBiz> list = Lists.newArrayList(bizList);
 
-        return this.redisAbout.getRedisProvider().getMapFromValueCache(
+        return this.redisAbout.getStrictRedisProvider().getMapFromValueCache(
                 this.redisAbout.getCountBizAfterAllTotalCacheKeyType(),
                 this.redisAbout.getAfterAllTotalCacheDuration(),
                 Long.class,
@@ -131,7 +131,7 @@ public class CommonCountProvider {
                 o -> KeyEntity.of(redisAbout.getCountBizDateCacheKeyType(), o.giveJson())
         );
 
-        List<Long> cacheBizDateTotals = redisAbout.getRedisProvider().multiGet(latestCacheKeys, Long.class);
+        List<Long> cacheBizDateTotals = redisAbout.getStrictRedisProvider().multiGet(latestCacheKeys, Long.class);
 
         for (int i = 0; i < hasTotalBizDateList.size(); i++) {
             CountBizDate bizDate = hasTotalBizDateList.get(i);
@@ -210,7 +210,7 @@ public class CommonCountProvider {
                     needReadCacheBizDateList,
                     o -> KeyEntity.of(redisAbout.getCountBizDateCacheKeyType(), o.giveJson())
             );
-            List<Long> values = redisAbout.getRedisProvider().multiGet(needReadCacheKeys, Long.class);
+            List<Long> values = redisAbout.getStrictRedisProvider().multiGet(needReadCacheKeys, Long.class);
             for (int i = 0; i < needReadCacheBizDateList.size(); i++) {
                 CountBizDate bizDate = needReadCacheBizDateList.get(i);
                 Long value = values.get(i);
@@ -276,7 +276,7 @@ public class CommonCountProvider {
 
             while (true) {
                 Query query = new Query();
-                query.addCriteria(Criteria.where("sc").is(this.redisAbout.getRedisProvider().getDistributedKeyProvider().getScope()));
+                query.addCriteria(Criteria.where("sc").is(this.redisAbout.getStrictRedisProvider().getDistributedKeyProvider().getScope()));
                 query.addCriteria(Criteria.where("st").lt(limitTime.getTime()));
                 query.addCriteria(Criteria.where("c").is(false));
                 query.limit(1000);
@@ -312,14 +312,14 @@ public class CommonCountProvider {
                         bizIncMap.put(commonCountTotal.extractBiz(), 0L);
                     }
 
-                    KeyType keyType = this.redisAbout.getRedisProvider().getDistributedKeyProvider().getKeyType(entry.getKey().getLockFinder());
+                    KeyType keyType = this.redisAbout.getStrictRedisProvider().getDistributedKeyProvider().getKeyType(entry.getKey().getLockFinder());
                     if (keyType == null) {
                         continue;
                     }
                     KeyEntity<KeyType> lock = KeyEntity.of(keyType, entry.getKey().getLockId());
 
                     try {
-                        this.redisAbout.getRedisProvider().exeFuncWithLock(lock, o -> {
+                        this.redisAbout.getStrictRedisProvider().exeFuncWithLock(lock, o -> {
                             Pair<MongoPersistEntity.PersistEntity, Map<CountBiz, CountBizEntity>> pair = this.distributeSafeMultiBizCount(bizIncMap, new Date(), lock);
                             this.persistProvider.persist(Lists.newArrayList(pair.getLeft()));
                             return null;
@@ -352,7 +352,7 @@ public class CommonCountProvider {
     public MongoPersistEntity.PersistEntity insertPersistHistory(List<Map<CountBizDate, Long>> bizDateIncMapList) {
         MongoPersistEntity.PersistEntity persistEntity = new MongoPersistEntity.PersistEntity();
 
-        Map<String, RedisProvider.AcceptType> map = new HashMap<>();
+        Map<String, StrictRedisProvider.AcceptType> map = new HashMap<>();
         for (Map<CountBizDate, Long> bizDateIncMap : bizDateIncMapList) {
             for (Map.Entry<CountBizDate, Long> entry : bizDateIncMap.entrySet()) {
                 CommonCountPersistHistory data = CommonCountPersistHistory.of(entry.getKey(), entry.getValue());
@@ -365,12 +365,12 @@ public class CommonCountProvider {
         MongoPersistEntity.CacheInterface historyStoreCache = new MongoPersistEntity.CacheInterface() {
             @Override
             public void persist() {
-                redisAbout.getRedisProvider().hmset(redisAbout.getCountHistoryHashKey(), map);
+                redisAbout.getStrictRedisProvider().hmset(redisAbout.getCountHistoryHashKey(), map);
             }
 
             @Override
             public void rollback() {
-                redisAbout.getRedisProvider().hdel(redisAbout.getCountHistoryHashKey(), map.keySet());
+                redisAbout.getStrictRedisProvider().hdel(redisAbout.getCountHistoryHashKey(), map.keySet());
             }
         };
 
@@ -408,7 +408,7 @@ public class CommonCountProvider {
 
             @Override
             public CommonCountPersistHistory findResource() {
-                return redisAbout.getRedisProvider().hget(redisAbout.getCountHistoryHashKey(), id, CommonCountPersistHistory.class);
+                return redisAbout.getStrictRedisProvider().hget(redisAbout.getCountHistoryHashKey(), id, CommonCountPersistHistory.class);
             }
 
             @Override
@@ -417,7 +417,7 @@ public class CommonCountProvider {
             }
         };
 
-        entity.handle(this.redisAbout.getRedisProvider(), o -> {
+        entity.handle(this.redisAbout.getStrictRedisProvider(), o -> {
             CountBizDate bizDate = o.extractBizDate();
             CountBiz biz = bizDate.extractBiz();
 
@@ -428,12 +428,12 @@ public class CommonCountProvider {
             MongoPersistEntity.CacheInterface deleteHistoryCache = new MongoPersistEntity.CacheInterface() {
                 @Override
                 public void persist() {
-                    redisAbout.getRedisProvider().hdel(redisAbout.getCountHistoryHashKey(), Sets.newHashSet(id));
+                    redisAbout.getStrictRedisProvider().hdel(redisAbout.getCountHistoryHashKey(), Sets.newHashSet(id));
                 }
 
                 @Override
                 public void rollback() {
-                    redisAbout.getRedisProvider().hmset(redisAbout.getCountHistoryHashKey(), Map.of(id, o.toRedisAccept()));
+                    redisAbout.getStrictRedisProvider().hmset(redisAbout.getCountHistoryHashKey(), Map.of(id, o.toRedisAccept()));
                 }
             };
 
@@ -453,7 +453,7 @@ public class CommonCountProvider {
                 return null;
             }
 
-            this.redisAbout.getRedisProvider().exeFuncWithLock(
+            this.redisAbout.getStrictRedisProvider().exeFuncWithLock(
                     KeyEntity.of(this.redisAbout.getCommonCountTotalCreateLockType(), biz.giveJson()),
                     M -> {
                         countBizEntity.setCommonCountTotal();
@@ -529,23 +529,23 @@ public class CommonCountProvider {
             return null;
         }
 
-        Map<KeyEntity<? extends KeyType>, RedisProvider.AcceptType> rollbackMap = new HashMap<>();
+        Map<KeyEntity<? extends KeyType>, StrictRedisProvider.AcceptType> rollbackMap = new HashMap<>();
         for (Map.Entry<KeyEntity<? extends KeyType>, Long> entry : map.entrySet()) {
             if (entry.getValue() != null) {
-                rollbackMap.put(entry.getKey(), RedisProvider.AcceptType.of(entry.getValue()));
+                rollbackMap.put(entry.getKey(), StrictRedisProvider.AcceptType.of(entry.getValue()));
             }
         }
 
         return new MongoPersistEntity.CacheInterface() {
             @Override
             public void persist() {
-                redisAbout.getRedisProvider().delete(map.keySet());
+                redisAbout.getStrictRedisProvider().delete(map.keySet());
             }
 
             @Override
             public void rollback() {
                 if (!rollbackMap.isEmpty()) {
-                    redisAbout.getRedisProvider().multiSet(rollbackMap);
+                    redisAbout.getStrictRedisProvider().multiSet(rollbackMap);
                 }
             }
         };
@@ -591,7 +591,7 @@ public class CommonCountProvider {
                             redisAbout.getCountBizDateCacheKeyType(),
                             o.giveJson()
                     ));
-            List<Long> cacheList = redisAbout.getRedisProvider().multiGet(keyList, Long.class);
+            List<Long> cacheList = redisAbout.getStrictRedisProvider().multiGet(keyList, Long.class);
 
             for (int i = 0; i < needReadBeforeLatestCacheTotalBizDates.size(); i++) {
                 CountBizDate bizDate = needReadBeforeLatestCacheTotalBizDates.get(i);
@@ -801,12 +801,12 @@ public class CommonCountProvider {
 
                     long nextInc = getNextCacheInc();
                     if (nextInc != 0) {
-                        redisAbout.getRedisProvider().incrBy(keyEntity, nextInc * -1);
+                        redisAbout.getStrictRedisProvider().incrBy(keyEntity, nextInc * -1);
 
                         afterAllTotal -= nextInc;
                     }
 
-                    redisAbout.getRedisProvider().delete(
+                    redisAbout.getStrictRedisProvider().delete(
                             KeyEntity.of(redisAbout.getCountBizAfterAllTotalCacheKeyType(), biz.giveJson())
                     );
                 }
@@ -833,7 +833,7 @@ public class CommonCountProvider {
 
             Object[] values = new Long[]{this.getNextCacheInc(), this.getDbTotal(), redisAbout.getAfterAllTotalCacheDuration().toSeconds()};
 
-            return redisAbout.getRedisProvider().executeLua(redisScript, Lists.newArrayList(beforeKeyEntity, nextKeyEntity, afterAllKeyEntity), values);
+            return redisAbout.getStrictRedisProvider().executeLua(redisScript, Lists.newArrayList(beforeKeyEntity, nextKeyEntity, afterAllKeyEntity), values);
         }
 
         private long getDbTotal() {
@@ -857,7 +857,7 @@ public class CommonCountProvider {
                 throw new BizException("distributeSafe cant use this func");
             }
 
-            CommonCountTotal cache = redisAbout.getRedisProvider().get(
+            CommonCountTotal cache = redisAbout.getStrictRedisProvider().get(
                     KeyEntity.of(redisAbout.getCommonCountTotalCacheKeyType(), this.biz.giveJson()),
                     CommonCountTotal.class
             );
@@ -896,11 +896,11 @@ public class CommonCountProvider {
                 }
             };
 
-            this.commonCountTotal = entity.getDefault(redisAbout.getRedisProvider(), o -> {
+            this.commonCountTotal = entity.getDefault(redisAbout.getStrictRedisProvider(), o -> {
                 boolean needUpdate = o.checkNeedUpdateCache(cache);
 
                 if (needUpdate) {
-                    redisAbout.getRedisProvider().set(
+                    redisAbout.getStrictRedisProvider().set(
                             KeyEntity.of(redisAbout.getCommonCountTotalCacheKeyType(), this.biz.giveJson()),
                             o.toRedisAccept(),
                             Duration.ofHours(1)
@@ -973,7 +973,7 @@ public class CommonCountProvider {
             }
 
             //代表日志在上次缓存日期之后
-            Long value = redisAbout.getRedisProvider().get(
+            Long value = redisAbout.getStrictRedisProvider().get(
                     KeyEntity.of(
                             redisAbout.getCountBizDateCacheKeyType(),
                             this.biz.convertToBizDate(this.beforeLatestCacheDate).giveJson()
@@ -1217,8 +1217,8 @@ public class CommonCountProvider {
             return data;
         }
 
-        public RedisProvider.AcceptType toRedisAccept() {
-            return RedisProvider.AcceptType.of(JsonHelper.writeValueAsString(this));
+        public StrictRedisProvider.AcceptType toRedisAccept() {
+            return StrictRedisProvider.AcceptType.of(JsonHelper.writeValueAsString(this));
         }
 
         public boolean checkNeedUpdateCache(@Nullable CommonCountTotal cache) {
@@ -1265,7 +1265,7 @@ public class CommonCountProvider {
                 data.setTotal(0L);
                 data.setLatestCacheDate(bizDate.getDate());
                 data.setDataIsCold(false);
-                data.setScope(redisAbout.getRedisProvider().getDistributedKeyProvider().getScope());
+                data.setScope(redisAbout.getStrictRedisProvider().getDistributedKeyProvider().getScope());
             } catch (Exception e) {
                 throw new BizException(String.format("createTotal fail: %s", e.getMessage()));
             }
@@ -1444,8 +1444,8 @@ public class CommonCountProvider {
             return data;
         }
 
-        public RedisProvider.AcceptType toRedisAccept() {
-            return RedisProvider.AcceptType.of(JsonHelper.writeValueAsString(this));
+        public StrictRedisProvider.AcceptType toRedisAccept() {
+            return StrictRedisProvider.AcceptType.of(JsonHelper.writeValueAsString(this));
         }
     }
 
@@ -1453,7 +1453,7 @@ public class CommonCountProvider {
     @Setter
     @Getter
     public static class RedisAbout<M extends KeyType> {
-        private RedisProvider redisProvider;
+        private StrictRedisProvider strictRedisProvider;
 
         private Duration afterAllTotalCacheDuration;
 
@@ -1470,13 +1470,13 @@ public class CommonCountProvider {
         private KeyEntity<M> countHistoryHashKey;
 
         public static <M extends KeyType> RedisAbout<M> of(
-                RedisProvider redisProvider, Duration afterAllTotalCacheDuration,
+                StrictRedisProvider strictRedisProvider, Duration afterAllTotalCacheDuration,
                 M commonCountTotalCacheKeyType, M commonCountTotalCreateLockType, M countBizDateCacheKeyType,
                 M commonCountPersistHistoryLockType, M countBizAfterAllTotalCacheKeyType, KeyEntity<M> countHistoryHashKey
         ) {
             RedisAbout<M> data = new RedisAbout<>();
 
-            data.setRedisProvider(redisProvider);
+            data.setStrictRedisProvider(strictRedisProvider);
             data.setAfterAllTotalCacheDuration(afterAllTotalCacheDuration);
             data.setCommonCountTotalCacheKeyType(commonCountTotalCacheKeyType);
             data.setCommonCountTotalCreateLockType(commonCountTotalCreateLockType);

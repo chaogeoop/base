@@ -3,7 +3,7 @@ package io.github.chaogeoop.base.example.app;
 import io.github.chaogeoop.base.business.common.CommonCountProvider;
 import io.github.chaogeoop.base.business.elasticsearch.EsProvider;
 import io.github.chaogeoop.base.business.mongodb.PersistProvider;
-import io.github.chaogeoop.base.business.redis.RedisProvider;
+import io.github.chaogeoop.base.business.redis.StrictRedisProvider;
 import io.github.chaogeoop.base.business.common.helpers.JsonHelper;
 import io.github.chaogeoop.base.example.app.constants.RabbitmqConstants;
 import io.github.chaogeoop.base.example.app.keyregisters.CommonCountKeyRegister;
@@ -35,7 +35,7 @@ public class BeanConfig {
     private MongoTransactionManager mongoTransactionManager;
 
     @Autowired
-    private RedisProvider redisProvider;
+    private StrictRedisProvider strictRedisProvider;
 
     @Autowired
     @Qualifier("taskRabbitTemplate")
@@ -47,7 +47,7 @@ public class BeanConfig {
         return new EsProvider(
                 this.mongoTemplate,
                 EsProvider.RedisAbout.of(
-                        this.redisProvider,
+                        this.strictRedisProvider,
                         EsKeyRegister.ES_RESOURCE_FOR_JUDGE_UPDATE_CACHE_TYPE,
                         EsKeyRegister.SYNC_DATA_TO_ES_LOCK_TYPE
                 ),
@@ -72,7 +72,7 @@ public class BeanConfig {
         return new CommonCountProvider(
                 persistProvider,
                 CommonCountProvider.RedisAbout.of(
-                        this.redisProvider,
+                        this.strictRedisProvider,
                         Duration.ofMinutes(1),
                         CommonCountKeyRegister.COMMON_COUNT_TOTAL_CACHE_TYPE,
                         CommonCountKeyRegister.COMMON_COUNT_TOTAL_CREATE_LOCK_TYPE,

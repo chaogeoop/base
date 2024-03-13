@@ -1,7 +1,7 @@
 package io.github.chaogeoop.base.business.common.interfaces;
 
 import io.github.chaogeoop.base.business.redis.KeyEntity;
-import io.github.chaogeoop.base.business.redis.RedisProvider;
+import io.github.chaogeoop.base.business.redis.StrictRedisProvider;
 import io.github.chaogeoop.base.business.redis.KeyType;
 
 import javax.lang.model.type.NullType;
@@ -15,12 +15,12 @@ public interface CheckResourceValidToHandleInterface<T> {
 
     boolean validToHandle(T resource);
 
-    default <M> M handle(RedisProvider redisProvider, Function<T, M> func, Function<M, NullType> persistFunc) {
+    default <M> M handle(StrictRedisProvider strictRedisProvider, Function<T, M> func, Function<M, NullType> persistFunc) {
         T resource = this.findResource();
         if (resource == null || !this.validToHandle(resource)) {
             return null;
         }
-        return redisProvider.exeFuncWithLock(this.getLock(), Duration.ofSeconds(10), 10, o -> {
+        return strictRedisProvider.exeFuncWithLock(this.getLock(), Duration.ofSeconds(10), 10, o -> {
             T obj = this.findResource();
             if (obj == null || !this.validToHandle(obj)) {
                 return null;

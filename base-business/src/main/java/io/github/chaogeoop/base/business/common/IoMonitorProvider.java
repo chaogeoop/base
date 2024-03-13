@@ -5,7 +5,7 @@ import io.github.chaogeoop.base.business.common.interfaces.DefaultResourceInterf
 import io.github.chaogeoop.base.business.common.interfaces.IoMonitorPersist;
 import io.github.chaogeoop.base.business.mongodb.BaseModel;
 import io.github.chaogeoop.base.business.redis.KeyEntity;
-import io.github.chaogeoop.base.business.redis.RedisProvider;
+import io.github.chaogeoop.base.business.redis.StrictRedisProvider;
 import io.github.chaogeoop.base.business.common.errors.BizException;
 import io.github.chaogeoop.base.business.redis.KeyType;
 import lombok.Getter;
@@ -90,7 +90,7 @@ public class IoMonitorProvider implements IoMonitorPersist {
             }
         };
 
-        entity.getDefault(this.redisAbout.getRedisProvider(), existDbLog -> {
+        entity.getDefault(this.redisAbout.getStrictRedisProvider(), existDbLog -> {
             if (existDbLog.getId() == null) {
                 if (existDbLogHandler != null) {
                     existDbLogHandler.apply(existDbLog);
@@ -143,14 +143,14 @@ public class IoMonitorProvider implements IoMonitorPersist {
     @Setter
     @Getter
     public static class RedisAbout<M extends KeyType> {
-        private RedisProvider redisProvider;
+        private StrictRedisProvider strictRedisProvider;
 
         private M ioMonitorPersistLockType;
 
-        public static <M extends KeyType> RedisAbout<M> of(RedisProvider redisProvider, M lockType) {
+        public static <M extends KeyType> RedisAbout<M> of(StrictRedisProvider strictRedisProvider, M lockType) {
             RedisAbout<M> data = new RedisAbout<>();
 
-            data.setRedisProvider(redisProvider);
+            data.setStrictRedisProvider(strictRedisProvider);
             data.setIoMonitorPersistLockType(lockType);
 
             return data;

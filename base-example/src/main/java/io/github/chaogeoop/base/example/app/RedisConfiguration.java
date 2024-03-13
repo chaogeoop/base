@@ -1,7 +1,7 @@
 package io.github.chaogeoop.base.example.app;
 
 import io.github.chaogeoop.base.business.redis.DistributedKeyProvider;
-import io.github.chaogeoop.base.business.redis.RedisProvider;
+import io.github.chaogeoop.base.business.redis.StrictRedisProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -50,7 +50,7 @@ public class RedisConfiguration {
     }
 
     @Bean
-    public RedisProvider redisProvider(RedisTemplate<String, Object> redisTemplate, DistributedKeyProvider distributedKeyProvider) {
-        return new RedisProvider(redisTemplate, distributedKeyProvider);
+    public StrictRedisProvider redisProvider(RedisTemplate<String, Object> redisTemplate, DistributedKeyProvider distributedKeyProvider) {
+        return new StrictRedisProvider(redisTemplate, distributedKeyProvider);
     }
 }

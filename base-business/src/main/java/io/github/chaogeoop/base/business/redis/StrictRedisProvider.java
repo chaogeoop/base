@@ -19,7 +19,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
-public class RedisProvider {
+public class StrictRedisProvider {
     private final RedisTemplate<String, Object> template;
     private final DistributedKeyProvider distributedKeyProvider;
 
@@ -51,7 +51,7 @@ public class RedisProvider {
             "end  \n" +
             "return 1";
 
-    public RedisProvider(RedisTemplate<String, Object> template, DistributedKeyProvider distributedKeyProvider) {
+    public StrictRedisProvider(RedisTemplate<String, Object> template, DistributedKeyProvider distributedKeyProvider) {
         this.template = template;
         this.distributedKeyProvider = distributedKeyProvider;
     }

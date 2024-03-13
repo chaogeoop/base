@@ -4,7 +4,7 @@ import io.github.chaogeoop.base.business.common.interfaces.IUserContext;
 import io.github.chaogeoop.base.business.common.interfaces.IUserContextConverter;
 import io.github.chaogeoop.base.business.mongodb.IPrimaryChooseStamp;
 import io.github.chaogeoop.base.business.redis.KeyEntity;
-import io.github.chaogeoop.base.business.redis.RedisProvider;
+import io.github.chaogeoop.base.business.redis.StrictRedisProvider;
 import io.github.chaogeoop.base.business.common.helpers.JsonHelper;
 import io.github.chaogeoop.base.example.app.keyregisters.UserKeyRegister;
 import io.github.chaogeoop.base.example.repository.entities.UserContext;
@@ -19,7 +19,7 @@ import java.util.Date;
 @Service
 public class UserService implements IUserContextConverter, IPrimaryChooseStamp {
     @Autowired
-    private RedisProvider redisProvider;
+    private StrictRedisProvider strictRedisProvider;
 
     @Override
     public IUserContext convert(NativeWebRequest request) {
@@ -45,7 +45,7 @@ public class UserService implements IUserContextConverter, IPrimaryChooseStamp {
             inc = Duration.ofSeconds(10).toMillis();
         }
 
-        this.redisProvider.set(this.getPrimaryChooseStampKey(userContext), RedisProvider.AcceptType.of(stamp), Duration.ofMillis(inc));
+        this.strictRedisProvider.set(this.getPrimaryChooseStampKey(userContext), StrictRedisProvider.AcceptType.of(stamp), Duration.ofMillis(inc));
     }
 
     @Override
@@ -55,7 +55,7 @@ public class UserService implements IUserContextConverter, IPrimaryChooseStamp {
             return null;
         }
 
-        return this.redisProvider.get(this.getPrimaryChooseStampKey(userContext), Long.class);
+        return this.strictRedisProvider.get(this.getPrimaryChooseStampKey(userContext), Long.class);
     }
 
     private KeyEntity<UserKeyRegister.UserDistributedKey> getPrimaryChooseStampKey(UserContext userContext) {

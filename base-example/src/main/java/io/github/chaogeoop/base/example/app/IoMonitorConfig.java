@@ -4,7 +4,7 @@ import io.github.chaogeoop.base.business.common.IoMonitorProvider;
 import io.github.chaogeoop.base.business.common.annotations.EnableMongoIoMonitor;
 import io.github.chaogeoop.base.business.common.annotations.EnableRedisIoMonitor;
 import io.github.chaogeoop.base.business.common.annotations.IoMonitorAspect;
-import io.github.chaogeoop.base.business.redis.RedisProvider;
+import io.github.chaogeoop.base.business.redis.StrictRedisProvider;
 import io.github.chaogeoop.base.business.common.helpers.JsonHelper;
 import io.github.chaogeoop.base.example.app.constants.RabbitmqConstants;
 import io.github.chaogeoop.base.example.app.keyregisters.IoKeyRegister;
@@ -23,7 +23,7 @@ public class IoMonitorConfig {
     private RabbitTemplate rabbitTemplate;
 
     @Autowired
-    private RedisProvider redisProvider;
+    private StrictRedisProvider strictRedisProvider;
 
     @Autowired
     private MongoTemplate mongoTemplate;
@@ -32,7 +32,7 @@ public class IoMonitorConfig {
     public IoMonitorProvider ioMonitorProvider() {
         return new IoMonitorProvider(
                 IoMonitorProvider.RedisAbout.of(
-                        this.redisProvider,
+                        this.strictRedisProvider,
                         IoKeyRegister.IO_MONITOR_LOG_PERSIST_LOCK_TYPE
                 ),
                 this.mongoTemplate,
