@@ -11,7 +11,7 @@ import java.lang.reflect.Method;
 
 @Aspect
 public class RedisMonitorAspect {
-    @Pointcut("execution(* io.github.chaogeoop.base.business.redis.RedisProvider.*(..))")
+    @Pointcut("execution(* io.github.chaogeoop.base.business.redis.StrictRedisProvider.*(..))")
     public void redisMonitorHandle() {
     }
 
