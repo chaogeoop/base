@@ -56,6 +56,10 @@ public class RedisProvider {
         this.distributedKeyProvider = distributedKeyProvider;
     }
 
+    public DistributedKeyProvider getDistributedKeyProvider(){
+        return this.distributedKeyProvider;
+    }
+
     public <T> T executeLua(DefaultRedisScript<T> redisScript, List<KeyEntity<? extends KeyType>> keyEntities, Object[] args) {
         List<String> keys = CollectionHelper.map(keyEntities, this.distributedKeyProvider::getKey);
 

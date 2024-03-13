@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import io.github.chaogeoop.base.business.common.interfaces.CheckResourceValidToHandleInterface;
 import io.github.chaogeoop.base.business.common.interfaces.DefaultResourceInterface;
 import io.github.chaogeoop.base.business.mongodb.*;
+import io.github.chaogeoop.base.business.redis.DistributedKeyProvider;
 import io.github.chaogeoop.base.business.redis.KeyEntity;
 import io.github.chaogeoop.base.business.redis.RedisProvider;
 import io.github.chaogeoop.base.business.common.errors.BizException;
@@ -275,7 +276,7 @@ public class CommonCountProvider {
 
             while (true) {
                 Query query = new Query();
-                query.addCriteria(Criteria.where("ds").is(false));
+                query.addCriteria(Criteria.where("sc").is(this.redisAbout.getRedisProvider().getDistributedKeyProvider().getScope()));
                 query.addCriteria(Criteria.where("st").lt(limitTime.getTime()));
                 query.addCriteria(Criteria.where("c").is(false));
                 query.limit(1000);
@@ -292,13 +293,41 @@ public class CommonCountProvider {
                 CommonCountTotal lastRecord = logs.get(logs.size() - 1);
                 _id = lastRecord.getId();
 
-                Map<CountBizDate, Long> bizDateIncMap = new HashMap<>();
-                for (CommonCountTotal log : logs) {
-                    bizDateIncMap.put(log.extractBiz().convertToBizDate(currentDate), 0L);
+                List<? extends CommonCountTotal> distributeSafeLogs = CollectionHelper.remove(logs, o -> o.getLockFinder() != null);
+
+                if (!logs.isEmpty()) {
+                    Map<CountBizDate, Long> bizDateIncMap = new HashMap<>();
+                    for (CommonCountTotal log : logs) {
+                        bizDateIncMap.put(log.extractBiz().convertToBizDate(currentDate), 0L);
+                    }
+
+                    MongoPersistEntity.PersistEntity persistEntity = this.insertPersistHistory(bizDateIncMap);
+                    this.persistProvider.persist(Lists.newArrayList(persistEntity));
                 }
 
-                MongoPersistEntity.PersistEntity persistEntity = this.insertPersistHistory(bizDateIncMap);
-                this.persistProvider.persist(Lists.newArrayList(persistEntity));
+                Map<CountLock, List<CommonCountTotal>> group = CountLock.group((List<CommonCountTotal>) distributeSafeLogs);
+                for (Map.Entry<CountLock, List<CommonCountTotal>> entry : group.entrySet()) {
+                    Map<CountBiz, Long> bizIncMap = new HashMap<>();
+                    for (CommonCountTotal commonCountTotal : entry.getValue()) {
+                        bizIncMap.put(commonCountTotal.extractBiz(), 0L);
+                    }
+
+                    KeyType keyType = this.redisAbout.getRedisProvider().getDistributedKeyProvider().getKeyType(entry.getKey().getLockFinder());
+                    if (keyType == null) {
+                        continue;
+                    }
+                    KeyEntity<KeyType> lock = KeyEntity.of(keyType, entry.getKey().getLockId());
+
+                    try {
+                        this.redisAbout.getRedisProvider().exeFuncWithLock(lock, o -> {
+                            Pair<MongoPersistEntity.PersistEntity, Map<CountBiz, CountBizEntity>> pair = this.distributeSafeMultiBizCount(bizIncMap, new Date(), lock);
+                            this.persistProvider.persist(Lists.newArrayList(pair.getLeft()));
+                            return null;
+                        });
+                    } catch (Exception e) {
+                        log.error("freezeColdData error", e);
+                    }
+                }
             }
         }
     }
@@ -455,7 +484,9 @@ public class CommonCountProvider {
     }
 
 
-    public Pair<MongoPersistEntity.PersistEntity, Map<CountBiz, CountBizEntity>> distributeSafeMultiBizCount(Map<CountBiz, Long> bizIncMap, Date occurTime) {
+    public Pair<MongoPersistEntity.PersistEntity, Map<CountBiz, CountBizEntity>> distributeSafeMultiBizCount(
+            Map<CountBiz, Long> bizIncMap, Date occurTime, KeyEntity<? extends KeyType> lock
+    ) {
         MongoPersistEntity.PersistEntity persistEntity = new MongoPersistEntity.PersistEntity();
 
         String occurDate = DateHelper.dateToString(occurTime, DateHelper.DateFormatEnum.fullUntilDay);
@@ -468,7 +499,7 @@ public class CommonCountProvider {
                 continue;
             }
 
-            CommonCountTotal newTotal = CommonCountTotal.of(totalDbClazz, entry.getKey().convertToBizDate(occurDate));
+            CommonCountTotal newTotal = CommonCountTotal.of(this.totalDbClazz, entry.getKey().convertToBizDate(occurDate), this.redisAbout, lock);
             bizCountTotalMap.put(entry.getKey(), newTotal);
             persistEntity.getDatabase().insert(newTotal);
         }
@@ -859,8 +890,7 @@ public class CommonCountProvider {
 
                 @Override
                 public CommonCountTotal createWhenNotExist() {
-                    CommonCountTotal data = CommonCountTotal.of(totalDbClazz, bizDate);
-                    data.setDistributeSafe(false);
+                    CommonCountTotal data = CommonCountTotal.of(totalDbClazz, bizDate, redisAbout);
 
                     return mongoTemplate.insert(data, collectionName);
                 }
@@ -1125,7 +1155,7 @@ public class CommonCountProvider {
     @Getter
     @CompoundIndexes({
             @CompoundIndex(name = "typeId_bizType_subBizType", def = "{'t':1, 'b':1, 's': 1}", unique = true),
-            @CompoundIndex(name = "distributeSafe_latestCacheStamp_dataIsCold", def = "{'ds': 1, 'st':1, 'c':1}")
+            @CompoundIndex(name = "scope_latestCacheStamp_dataIsCold", def = "{'sc':1, 'st':1, 'c':1}")
     })
     public static class CommonCountTotal extends BaseModel implements ISplitCollection {
         @Field(value = "t")
@@ -1148,8 +1178,12 @@ public class CommonCountProvider {
         @Field(value = "c")
         private Boolean dataIsCold = false;
 
-        @Field(value = "ds")
-        private Boolean distributeSafe = true;
+        @Field(value = "sc")
+        private String scope;
+
+        private DistributedKeyProvider.KeyFinder lockFinder;
+
+        private String lockId;
 
         @JsonIgnore
         @Transient
@@ -1221,7 +1255,7 @@ public class CommonCountProvider {
             return data;
         }
 
-        public static <M extends CommonCountTotal> M of(Class<M> clazz, CountBizDate bizDate) {
+        public static <M extends CommonCountTotal> M of(Class<M> clazz, CountBizDate bizDate, RedisAbout<?> redisAbout) {
             M data;
             try {
                 data = clazz.getDeclaredConstructor().newInstance();
@@ -1231,10 +1265,19 @@ public class CommonCountProvider {
                 data.setTotal(0L);
                 data.setLatestCacheDate(bizDate.getDate());
                 data.setDataIsCold(false);
-                data.setDistributeSafe(true);
+                data.setScope(redisAbout.getRedisProvider().getDistributedKeyProvider().getScope());
             } catch (Exception e) {
                 throw new BizException(String.format("createTotal fail: %s", e.getMessage()));
             }
+
+            return data;
+        }
+
+        public static <M extends CommonCountTotal> M of(Class<M> clazz, CountBizDate bizDate, RedisAbout<?> redisAbout, KeyEntity<? extends KeyType> lock) {
+            M data = CommonCountTotal.of(clazz, bizDate, redisAbout);
+
+            data.setLockFinder(DistributedKeyProvider.KeyFinder.of(lock.getType()));
+            data.setLockId(lock.getTypeId());
 
             return data;
         }
@@ -1443,6 +1486,40 @@ public class CommonCountProvider {
             data.setCountHistoryHashKey(countHistoryHashKey);
 
             return data;
+        }
+    }
+
+    @Setter
+    @Getter
+    public static class CountLock {
+        private DistributedKeyProvider.KeyFinder lockFinder;
+
+        private String lockId;
+
+        public static CountLock of(CommonCountTotal total) {
+            CountLock countLock = new CountLock();
+
+            countLock.setLockFinder(total.getLockFinder());
+            countLock.setLockId(total.getLockId());
+
+            return countLock;
+        }
+
+        public static Map<CountLock, List<CommonCountTotal>> group(List<CommonCountTotal> totals) {
+            return CollectionHelper.groupBy(totals, CountLock::of);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            CountLock countLock = (CountLock) o;
+            return java.util.Objects.equals(lockFinder, countLock.lockFinder) && java.util.Objects.equals(lockId, countLock.lockId);
+        }
+
+        @Override
+        public int hashCode() {
+            return java.util.Objects.hash(lockFinder, lockId);
         }
     }
 }

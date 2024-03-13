@@ -28,6 +28,9 @@ public class CommonCountKeyRegister implements IKeyRegister<CommonCountKeyRegist
     public static CommonCountDistributedKey COUNT_BIZ_AFTER_ALL_TOTAL_CACHE_TYPE =
             CommonCountDistributedKey.of("countBizAfterAllTotal", "cache");
 
+    public static CommonCountDistributedKey USER_COLLECT_BOOKS_LOCK_TYPE =
+            CommonCountDistributedKey.of("userCollectBooks", "lock");
+
     @Override
     public List<CommonCountDistributedKey> register() {
         List<CommonCountDistributedKey> list = new ArrayList<>();
@@ -38,6 +41,7 @@ public class CommonCountKeyRegister implements IKeyRegister<CommonCountKeyRegist
         list.add(COMMON_COUNT_PERSIST_HISTORY_PERSIST_LOCK_TYPE);
         list.add(COMMON_COUNT_PERSIST_HISTORY_HASH_STORE_TYPE);
         list.add(COUNT_BIZ_AFTER_ALL_TOTAL_CACHE_TYPE);
+        list.add(USER_COLLECT_BOOKS_LOCK_TYPE);
 
         return list;
     }

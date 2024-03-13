@@ -136,39 +136,45 @@ public class CommonCountController {
     @PostMapping("/distributeSafeInc")
     @IoMonitor(intervalTimes = 1)
     public HttpResult<Map<String, Long>> distributeSafeInc(@UserInfo UserContext userContext, @RequestBody BookInput input) {
-        Set<CommonCountProvider.CountBiz> userCountBizList = CollectionHelper.map(input.getBookIds(), o -> getUserBookFavoriteBiz(userContext, o, input.getAction()));
-        Set<CommonCountProvider.CountBiz> pubCountBizList = CollectionHelper.map(input.getBookIds(), o -> getBookFavoriteBiz(o, input.getAction()));
+        KeyEntity<CommonCountKeyRegister.CommonCountDistributedKey> lock = KeyEntity.of(CommonCountKeyRegister.USER_COLLECT_BOOKS_LOCK_TYPE, userContext.getUserId().toString());
 
-        Map<String, Long> result = new HashMap<>();
+        Map<String, Long> value = this.redisProvider.exeFuncWithLock(lock, m -> {
+            Set<CommonCountProvider.CountBiz> userCountBizList = CollectionHelper.map(input.getBookIds(), o -> getUserBookFavoriteBiz(userContext, o, input.getAction()));
+            Set<CommonCountProvider.CountBiz> pubCountBizList = CollectionHelper.map(input.getBookIds(), o -> getBookFavoriteBiz(o, input.getAction()));
 
-        Map<CommonCountProvider.CountBiz, Long> userIncMap = new HashMap<>();
-        for (CommonCountProvider.CountBiz countBiz : userCountBizList) {
-            userIncMap.put(countBiz, 1L);
-        }
+            Map<String, Long> result = new HashMap<>();
 
-        Date occurTime = new Date();
-        if (input.getOccur() != null) {
-            occurTime = DateHelper.parseStringDate(input.getOccur(), DateHelper.DateFormatEnum.fullUntilSecond);
-        }
-        String occurDate = DateHelper.dateToString(occurTime, DateHelper.DateFormatEnum.fullUntilDay);
+            Map<CommonCountProvider.CountBiz, Long> userIncMap = new HashMap<>();
+            for (CommonCountProvider.CountBiz countBiz : userCountBizList) {
+                userIncMap.put(countBiz, 1L);
+            }
 
-        Map<CommonCountProvider.CountBizDate, Long> pubIncMap = new HashMap<>();
-        for (CommonCountProvider.CountBiz countBiz : pubCountBizList) {
-            pubIncMap.put(countBiz.convertToBizDate(occurDate), 1L);
-        }
+            Date occurTime = new Date();
+            if (input.getOccur() != null) {
+                occurTime = DateHelper.parseStringDate(input.getOccur(), DateHelper.DateFormatEnum.fullUntilSecond);
+            }
+            String occurDate = DateHelper.dateToString(occurTime, DateHelper.DateFormatEnum.fullUntilDay);
 
-        Pair<MongoPersistEntity.PersistEntity, Map<CommonCountProvider.CountBiz, CommonCountProvider.CountBizEntity>> pair =
-                this.commonCountProvider.distributeSafeMultiBizCount(userIncMap, occurTime);
+            Map<CommonCountProvider.CountBizDate, Long> pubIncMap = new HashMap<>();
+            for (CommonCountProvider.CountBiz countBiz : pubCountBizList) {
+                pubIncMap.put(countBiz.convertToBizDate(occurDate), 1L);
+            }
 
-        MongoPersistEntity.PersistEntity pubPersistEntity = this.commonCountProvider.insertPersistHistory(pubIncMap);
+            Pair<MongoPersistEntity.PersistEntity, Map<CommonCountProvider.CountBiz, CommonCountProvider.CountBizEntity>> pair =
+                    this.commonCountProvider.distributeSafeMultiBizCount(userIncMap, occurTime, lock);
 
-        this.persistProvider.persist(Lists.newArrayList(pair.getLeft(), pubPersistEntity));
+            MongoPersistEntity.PersistEntity pubPersistEntity = this.commonCountProvider.insertPersistHistory(pubIncMap);
 
-        for (Map.Entry<CommonCountProvider.CountBiz, CommonCountProvider.CountBizEntity> entry : pair.getRight().entrySet()) {
-            result.put(entry.getKey().giveJson(), entry.getValue().giveAfterAllTotal());
-        }
+            this.persistProvider.persist(Lists.newArrayList(pair.getLeft(), pubPersistEntity));
 
-        return HttpResult.of(result);
+            for (Map.Entry<CommonCountProvider.CountBiz, CommonCountProvider.CountBizEntity> entry : pair.getRight().entrySet()) {
+                result.put(entry.getKey().giveJson(), entry.getValue().giveAfterAllTotal());
+            }
+
+            return result;
+        });
+
+        return HttpResult.of(value);
     }
 
 
