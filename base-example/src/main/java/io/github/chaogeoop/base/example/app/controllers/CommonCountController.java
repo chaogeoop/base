@@ -159,7 +159,7 @@ public class CommonCountController {
             }
 
             Pair<MongoPersistEntity.PersistEntity, Map<CommonCountProvider.CountBiz, CommonCountProvider.CountBizEntity>> pair =
-                    this.commonCountProvider.distributeSafeMultiBizCount(userIncMap, occurTime, lock);
+                    this.commonCountProvider.distributeSafeMultiBizCount(userIncMap, occurTime);
 
             MongoPersistEntity.PersistEntity pubPersistEntity = this.commonCountProvider.insertPersistHistory(pubIncMap);
 

@@ -484,6 +484,9 @@ public class CommonCountProvider {
         }, o -> null);
     }
 
+    public Pair<MongoPersistEntity.PersistEntity, Map<CountBiz, CountBizEntity>> distributeSafeMultiBizCount(Map<CountBiz, Long> bizIncMap, Date occurTime) {
+        return this.distributeSafeMultiBizCount(bizIncMap, occurTime, null);
+    }
 
     public Pair<MongoPersistEntity.PersistEntity, Map<CountBiz, CountBizEntity>> distributeSafeMultiBizCount(
             Map<CountBiz, Long> bizIncMap, Date occurTime, @Nullable KeyEntity<? extends KeyType> lock
@@ -1071,7 +1074,7 @@ public class CommonCountProvider {
                 return this.stringKey;
             }
 
-            String data = JsonHelper.writeValueAsString(this);
+            String data = String.format("t:%s,b:%s,s:%s,d:%s", this.typeId, this.bizType, this.subBizType, this.date);
             this.stringKey = data;
 
             return data;
@@ -1134,7 +1137,7 @@ public class CommonCountProvider {
                 return this.stringKey;
             }
 
-            String data = JsonHelper.writeValueAsString(this);
+            String data = String.format("t:%s,b:%s,s:%s", this.typeId, this.bizType, this.subBizType);
             this.stringKey = data;
 
             return data;
