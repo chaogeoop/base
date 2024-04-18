@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-public interface ISplitPrimaryChooseRepository<M extends BaseModel> extends IPrimaryChoose<M> {
+public interface ISplitPrimaryChooseRepository<M extends EnhanceBaseModel & ISplitCollection> extends IPrimaryChoose<M> {
     default M findFirst(Predicate predicate, M splitKey) {
         return this.findFirst(predicate, splitKey, null);
     }

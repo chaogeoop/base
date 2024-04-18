@@ -3,7 +3,7 @@ package io.github.chaogeoop.base.example.app;
 import io.github.chaogeoop.base.business.elasticsearch.IBaseEs;
 import io.github.chaogeoop.base.business.elasticsearch.EsProvider;
 import io.github.chaogeoop.base.business.elasticsearch.ISearch;
-import io.github.chaogeoop.base.business.mongodb.BaseModel;
+import io.github.chaogeoop.base.business.mongodb.EnhanceBaseModel;
 import io.github.chaogeoop.base.business.mongodb.IPrimaryChoose;
 import io.github.chaogeoop.base.business.mongodb.InitCollectionIndexHandler;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +21,7 @@ import java.util.Set;
 @SpringBootApplication(scanBasePackages = "io.github.chaogeoop.base.example")
 public class AppApplication {
     @Autowired
-    private List<IPrimaryChoose<? extends BaseModel>> daoList;
+    private List<IPrimaryChoose<? extends EnhanceBaseModel>> daoList;
 
     @Autowired
     private List<EsProvider> esProviders;

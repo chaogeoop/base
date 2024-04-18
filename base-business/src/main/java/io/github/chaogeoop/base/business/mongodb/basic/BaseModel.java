@@ -16,7 +16,7 @@ import java.math.BigInteger;
 @Getter
 @JsonInclude(value = JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-public abstract class RootModel {
+public abstract class BaseModel {
     @Id
     BigInteger id;
 
@@ -24,7 +24,7 @@ public abstract class RootModel {
     @Field(value = "__v")
     private Long v;
 
-    public static String getBaseCollectionNameByClazz(Class<? extends RootModel> clazz) {
+    public static String getBaseCollectionNameByClazz(Class<? extends BaseModel> clazz) {
         if (!clazz.isAnnotationPresent(Document.class)) {
             throw new BizException("找不到表名");
         }
@@ -32,7 +32,7 @@ public abstract class RootModel {
         return clazz.getAnnotation(Document.class).value();
     }
 
-    public static String getNameInIdCollectionByClazz(Class<? extends RootModel> clazz) {
+    public static String getNameInIdCollectionByClazz(Class<? extends BaseModel> clazz) {
         if (clazz.isAnnotationPresent(NameInIdCollection.class)) {
             return clazz.getAnnotation(NameInIdCollection.class).name();
         }

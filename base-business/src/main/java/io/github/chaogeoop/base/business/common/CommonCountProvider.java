@@ -175,7 +175,7 @@ public class CommonCountProvider {
 
 
         Map<String, List<CountBizDate>> collectionNameBizDatesMap = CollectionHelper.groupBy(
-                bizDates, o -> BaseModel.getAccordCollectionNameByData(this.mongoTemplate, CommonCountDateLog.splitKeyOf(this.dateLogDbClazz, o))
+                bizDates, o -> EnhanceBaseModel.getAccordCollectionNameByData(this.mongoTemplate, CommonCountDateLog.splitKeyOf(this.dateLogDbClazz, o))
         );
 
         List<CommonCountDateLog> dateLogs = new ArrayList<>();
@@ -236,7 +236,7 @@ public class CommonCountProvider {
         Map<CountBiz, CommonCountTotal> map = new HashMap<>();
 
         Map<String, List<CountBiz>> collectionNameBizListMap = CollectionHelper.groupBy(
-                bizList, o -> BaseModel.getAccordCollectionNameByData(this.mongoTemplate, CommonCountTotal.splitKeyOf(this.totalDbClazz, o))
+                bizList, o -> EnhanceBaseModel.getAccordCollectionNameByData(this.mongoTemplate, CommonCountTotal.splitKeyOf(this.totalDbClazz, o))
         );
 
         for (Map.Entry<String, List<CountBiz>> entry : collectionNameBizListMap.entrySet()) {
@@ -628,7 +628,7 @@ public class CommonCountProvider {
             }
 
             Map<String, List<CountBizDate>> collectionNameBizDateList = CollectionHelper.groupBy(
-                    needCommonCountDateLogBizDates, o -> BaseModel.getAccordCollectionNameByData(mongoTemplate, CommonCountDateLog.splitKeyOf(dateLogDbClazz, o))
+                    needCommonCountDateLogBizDates, o -> EnhanceBaseModel.getAccordCollectionNameByData(mongoTemplate, CommonCountDateLog.splitKeyOf(dateLogDbClazz, o))
             );
 
             List<CommonCountDateLog> logs = new ArrayList<>();
@@ -866,7 +866,7 @@ public class CommonCountProvider {
                 return;
             }
 
-            String collectionName = BaseModel.getAccordCollectionNameByData(mongoTemplate, CommonCountTotal.splitKeyOf(totalDbClazz, this.biz));
+            String collectionName = EnhanceBaseModel.getAccordCollectionNameByData(mongoTemplate, CommonCountTotal.splitKeyOf(totalDbClazz, this.biz));
 
             DefaultResourceInterface<CommonCountTotal> entity = new DefaultResourceInterface<>() {
                 @Override
@@ -997,7 +997,7 @@ public class CommonCountProvider {
             }
 
             if (CacheStateEnum.NO_CACHE.equals(this.cacheState)) {
-                String collectionName = BaseModel.getAccordCollectionNameByData(mongoTemplate, CommonCountDateLog.splitKeyOf(dateLogDbClazz, this.bizDate));
+                String collectionName = EnhanceBaseModel.getAccordCollectionNameByData(mongoTemplate, CommonCountDateLog.splitKeyOf(dateLogDbClazz, this.bizDate));
 
                 Query query = new Query();
 
@@ -1157,7 +1157,7 @@ public class CommonCountProvider {
             @CompoundIndex(name = "typeId_bizType_subBizType", def = "{'t':1, 'b':1, 's': 1}", unique = true),
             @CompoundIndex(name = "scope_latestCacheStamp_dataIsCold", def = "{'sc':1, 'st':1, 'c':1}")
     })
-    public static class CommonCountTotal extends BaseModel implements ISplitCollection {
+    public static class CommonCountTotal extends EnhanceBaseModel implements ISplitCollection {
         @Field(value = "t")
         private String typeId;
 
@@ -1288,7 +1288,7 @@ public class CommonCountProvider {
     @CompoundIndexes({
             @CompoundIndex(name = "typeId_bizType_subBizType_date", def = "{'t':1, 'b':1, 's': 1, 'd': 1}", unique = true)
     })
-    public static class CommonCountDateLog extends BaseModel implements ISplitCollection {
+    public static class CommonCountDateLog extends EnhanceBaseModel implements ISplitCollection {
         @Field(value = "t")
         private String typeId;
 

@@ -13,7 +13,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class BaseSimpleMongoRepository<T extends RootModel, ID extends Serializable> extends SimpleMongoRepository<T, ID> implements BaseMongoRepository<T, ID> {
+public class BaseSimpleMongoRepository<T extends BaseModel, ID extends Serializable> extends SimpleMongoRepository<T, ID> implements BaseMongoRepository<T, ID> {
     private final MongoOperations mongoOperations;
 
     private final MongoEntityInformation<T, ID> entityInformation;

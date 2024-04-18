@@ -11,13 +11,13 @@ import java.util.List;
 
 
 public class MongoHelper {
-    public static <T extends RootModel> T findFirst(
+    public static <T extends BaseModel> T findFirst(
             MongoOperations mongoTemplate, Query query, Sort sort, Class<T> clazz
     ) {
-        return findFirst(mongoTemplate, query, sort, clazz, RootModel.getBaseCollectionNameByClazz(clazz));
+        return findFirst(mongoTemplate, query, sort, clazz, BaseModel.getBaseCollectionNameByClazz(clazz));
     }
 
-    public static <T extends RootModel> T findFirst(
+    public static <T extends BaseModel> T findFirst(
             MongoOperations mongoTemplate, Query query, Sort sort, Class<T> clazz, String collectionName
     ) {
         if (sort != null) {
@@ -27,8 +27,8 @@ public class MongoHelper {
         return mongoTemplate.findOne(query, clazz, collectionName);
     }
 
-    public static <T extends RootModel> long count(MongoOperations mongoTemplate, Query query, Class<T> clazz) {
-        return count(mongoTemplate, query, RootModel.getBaseCollectionNameByClazz(clazz));
+    public static <T extends BaseModel> long count(MongoOperations mongoTemplate, Query query, Class<T> clazz) {
+        return count(mongoTemplate, query, BaseModel.getBaseCollectionNameByClazz(clazz));
     }
 
     public static long count(MongoOperations mongoTemplate, Query query, String collectionName) {
@@ -42,13 +42,13 @@ public class MongoHelper {
         return count;
     }
 
-    public static <T extends RootModel> ListPage<T> pageQuery(
+    public static <T extends BaseModel> ListPage<T> pageQuery(
             MongoOperations mongoTemplate, Query query, List<String> fields, MongoPageSplitter mongoPageSplitter, Class<T> clazz
     ) {
-        return pageQuery(mongoTemplate, query, fields, mongoPageSplitter, clazz, RootModel.getBaseCollectionNameByClazz(clazz));
+        return pageQuery(mongoTemplate, query, fields, mongoPageSplitter, clazz, BaseModel.getBaseCollectionNameByClazz(clazz));
     }
 
-    public static <T extends RootModel> ListPage<T> pageQuery(
+    public static <T extends BaseModel> ListPage<T> pageQuery(
             MongoOperations mongoTemplate, Query query, List<String> fields, MongoPageSplitter mongoPageSplitter, Class<T> clazz, String collectionName
     ) {
         long count = count(mongoTemplate, query, collectionName);
@@ -72,13 +72,13 @@ public class MongoHelper {
         return ListPage.of(mongoPageSplitter.getOffset(), mongoPageSplitter.getLimit(), count, list);
     }
 
-    public static <T extends RootModel> List<T> listQuery(
+    public static <T extends BaseModel> List<T> listQuery(
             MongoOperations mongoTemplate, Query query, List<String> fields, Sort sort, Class<T> clazz
     ) {
-        return listQuery(mongoTemplate, query, fields, sort, clazz, RootModel.getBaseCollectionNameByClazz(clazz));
+        return listQuery(mongoTemplate, query, fields, sort, clazz, BaseModel.getBaseCollectionNameByClazz(clazz));
     }
 
-    public static <T extends RootModel> List<T> listQuery(
+    public static <T extends BaseModel> List<T> listQuery(
             MongoOperations mongoTemplate, Query query, List<String> fields, Sort sort, Class<T> clazz, String collectionName
     ) {
         if (!CollectionHelper.isEmpty(fields)) {

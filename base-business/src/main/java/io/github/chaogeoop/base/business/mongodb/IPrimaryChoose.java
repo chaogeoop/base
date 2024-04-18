@@ -6,7 +6,7 @@ import io.github.chaogeoop.base.business.mongodb.basic.BaseSpringDataMongodbQuer
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.data.mongodb.core.MongoTemplate;
 
-public interface IPrimaryChoose<M extends BaseModel> extends InitializingBean {
+public interface IPrimaryChoose<M extends EnhanceBaseModel> extends InitializingBean {
     @Override
     default void afterPropertiesSet() {
         PrimaryChooseHelper.fillDatabaseMainMap(this.getPrimary(), this.getPrimary());

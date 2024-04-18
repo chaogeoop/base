@@ -1,7 +1,7 @@
 package io.github.chaogeoop.base.business.mongodb;
 
+import io.github.chaogeoop.base.business.mongodb.basic.BaseModel;
 import io.github.chaogeoop.base.business.threadlocals.IoMonitorHolder;
-import io.github.chaogeoop.base.business.mongodb.basic.RootModel;
 import io.github.chaogeoop.base.business.common.errors.BizException;
 import io.github.chaogeoop.base.business.common.helpers.JsonHelper;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -21,14 +21,14 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
-public class BaseModel extends RootModel {
+public class EnhanceBaseModel extends BaseModel {
     private static final ConcurrentHashMap<DatabaseUnit, Set<String>> databaseUnitCollectionNamesMap = new ConcurrentHashMap<>();
 
     private static final ConcurrentHashMap<DatabaseUnit, Boolean> databaseUnitHasReadMap = new ConcurrentHashMap<>();
 
     private static final ConcurrentHashMap<MongoTemplate, Boolean> autoIndexMap = new ConcurrentHashMap<>();
 
-    private static final ConcurrentHashMap<Class<? extends BaseModel>, List<Index>> clazzIndexListMap = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<Class<? extends EnhanceBaseModel>, List<Index>> clazzIndexListMap = new ConcurrentHashMap<>();
 
     public static Set<String> getAllCollectionNames(MongoTemplate mongoTemplate, String baseCollectionName) {
         mongoTemplate = PrimaryChooseHelper.getMainDatabase(mongoTemplate);
@@ -37,10 +37,10 @@ public class BaseModel extends RootModel {
         return Sets.newHashSet(databaseUnitCollectionNamesMap.getOrDefault(databaseUnit, new HashSet<>()));
     }
 
-    public static String getAccordCollectionNameByData(MongoTemplate mongoTemplate, BaseModel data) {
-        Class<? extends BaseModel> clazz = data.getClass();
+    public static String getAccordCollectionNameByData(MongoTemplate mongoTemplate, EnhanceBaseModel data) {
+        Class<? extends EnhanceBaseModel> clazz = data.getClass();
 
-        String baseCollectionName = RootModel.getBaseCollectionNameByClazz(clazz);
+        String baseCollectionName = BaseModel.getBaseCollectionNameByClazz(clazz);
 
         String collectionName;
         if (!(data instanceof ISplitCollection)) {
@@ -53,20 +53,20 @@ public class BaseModel extends RootModel {
         return getAccordCollectionNameByClazzAndCollectionName(mongoTemplate, clazz, collectionName);
     }
 
-    public static String getBaseCollectionNameByClazz(MongoTemplate mongoTemplate, Class<? extends BaseModel> clazz) {
-        return getAccordCollectionNameByClazzAndCollectionName(mongoTemplate, clazz, RootModel.getBaseCollectionNameByClazz(clazz));
+    public static String getBaseCollectionNameByClazz(MongoTemplate mongoTemplate, Class<? extends EnhanceBaseModel> clazz) {
+        return getAccordCollectionNameByClazzAndCollectionName(mongoTemplate, clazz, BaseModel.getBaseCollectionNameByClazz(clazz));
     }
 
-    private static String getAccordCollectionNameByClazzAndCollectionName(MongoTemplate mongoTemplate, Class<? extends BaseModel> clazz, String collectionName) {
+    private static String getAccordCollectionNameByClazzAndCollectionName(MongoTemplate mongoTemplate, Class<? extends EnhanceBaseModel> clazz, String collectionName) {
         return getAccordCollectionNameWithCheckPreInit(mongoTemplate, clazz, collectionName, false);
     }
 
-    protected static String getAccordCollectionNamePreInit(MongoTemplate mongoTemplate, Class<? extends BaseModel> clazz, String collectionName) {
+    protected static String getAccordCollectionNamePreInit(MongoTemplate mongoTemplate, Class<? extends EnhanceBaseModel> clazz, String collectionName) {
         return getAccordCollectionNameWithCheckPreInit(mongoTemplate, clazz, collectionName, true);
     }
 
     private static String getAccordCollectionNameWithCheckPreInit(
-            MongoTemplate mongoTemplate, Class<? extends BaseModel> clazz, String collectionName, boolean preInit
+            MongoTemplate mongoTemplate, Class<? extends EnhanceBaseModel> clazz, String collectionName, boolean preInit
     ) {
         mongoTemplate = PrimaryChooseHelper.getMainDatabase(mongoTemplate);
         boolean correct = SplitCollectionHelper.isClazzRelativeCollection(collectionName, clazz);
@@ -78,7 +78,7 @@ public class BaseModel extends RootModel {
             initCollection(mongoTemplate, clazz, collectionName);
         }
 
-        String baseCollectionName = BaseModel.getBaseCollectionNameByClazz(clazz);
+        String baseCollectionName = EnhanceBaseModel.getBaseCollectionNameByClazz(clazz);
         DatabaseUnit databaseUnit = DatabaseUnit.of(mongoTemplate, baseCollectionName);
 
         if (!databaseUnitHasReadMap.containsKey(databaseUnit)) {
@@ -110,7 +110,7 @@ public class BaseModel extends RootModel {
         return collectionName;
     }
 
-    private static void initCollection(MongoTemplate mongoTemplate, Class<? extends BaseModel> clazz, String collectionName) {
+    private static void initCollection(MongoTemplate mongoTemplate, Class<? extends EnhanceBaseModel> clazz, String collectionName) {
         int failTime = 0;
         boolean autoIndex = checkIsAutoIndex(mongoTemplate);
         while (true) {
@@ -192,7 +192,7 @@ public class BaseModel extends RootModel {
         return value;
     }
 
-    private static List<Index> getIndexListFromCache(Class<? extends BaseModel> clazz) {
+    private static List<Index> getIndexListFromCache(Class<? extends EnhanceBaseModel> clazz) {
         if (!ISplitCollection.class.isAssignableFrom(clazz)) {
             return getIndexList(clazz);
         }
@@ -207,7 +207,7 @@ public class BaseModel extends RootModel {
         return indexList;
     }
 
-    private static List<Index> getIndexList(Class<? extends BaseModel> clazz) {
+    private static List<Index> getIndexList(Class<? extends EnhanceBaseModel> clazz) {
         List<Index> list = new ArrayList<>();
 
         List<CompoundIndex> compoundIndexList = new ArrayList<>();
@@ -260,7 +260,7 @@ public class BaseModel extends RootModel {
             }
 
             checkClazz = checkClazz.getSuperclass();
-        } while (!BaseModel.class.equals(checkClazz));
+        } while (!EnhanceBaseModel.class.equals(checkClazz));
 
 
         for (CompoundIndex compoundIndex : compoundIndexList) {
@@ -318,11 +318,11 @@ public class BaseModel extends RootModel {
             return data;
         }
 
-        public static DatabaseUnit of(MongoTemplate mongoTemplate, Class<? extends BaseModel> clazz) {
-            return of(mongoTemplate, BaseModel.getBaseCollectionNameByClazz(clazz));
+        public static DatabaseUnit of(MongoTemplate mongoTemplate, Class<? extends EnhanceBaseModel> clazz) {
+            return of(mongoTemplate, EnhanceBaseModel.getBaseCollectionNameByClazz(clazz));
         }
 
-        public static <M extends IPrimaryChoose<? extends BaseModel>> DatabaseUnit of(M choose) {
+        public static <M extends IPrimaryChoose<? extends EnhanceBaseModel>> DatabaseUnit of(M choose) {
             return of(choose.getPrimary(), choose.getModel());
         }
 

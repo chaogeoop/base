@@ -1,7 +1,7 @@
 package io.github.chaogeoop.base.business.threadlocals;
 
 import io.github.chaogeoop.base.business.common.entities.IoStatistic;
-import io.github.chaogeoop.base.business.mongodb.BaseModel;
+import io.github.chaogeoop.base.business.mongodb.EnhanceBaseModel;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -37,11 +37,11 @@ public class IoMonitorHolder {
         return result;
     }
 
-    public static <M extends BaseModel> void incDatabase(String collectionName) {
+    public static <M extends EnhanceBaseModel> void incDatabase(String collectionName) {
         incDatabase(collectionName, 1);
     }
 
-    public static <M extends BaseModel> void incDatabase(String collectionName, long times) {
+    public static <M extends EnhanceBaseModel> void incDatabase(String collectionName, long times) {
         IoStatistic result = ioMonitorHolder.get();
         if (result == null) {
             return;

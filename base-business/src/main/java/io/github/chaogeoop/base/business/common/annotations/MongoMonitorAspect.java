@@ -1,6 +1,6 @@
 package io.github.chaogeoop.base.business.common.annotations;
 
-import io.github.chaogeoop.base.business.mongodb.BaseModel;
+import io.github.chaogeoop.base.business.mongodb.EnhanceBaseModel;
 import io.github.chaogeoop.base.business.threadlocals.IoMonitorHolder;
 import org.apache.commons.lang3.StringUtils;
 import org.aspectj.lang.JoinPoint;
@@ -47,8 +47,8 @@ public class MongoMonitorAspect {
             Parameter parameter = parameters[i];
             Object arg = args[i];
 
-            if (arg instanceof Class && BaseModel.class.isAssignableFrom((Class<?>) arg)) {
-                baseCollectionName = BaseModel.getBaseCollectionNameByClazz((Class<? extends BaseModel>) arg);
+            if (arg instanceof Class && EnhanceBaseModel.class.isAssignableFrom((Class<?>) arg)) {
+                baseCollectionName = EnhanceBaseModel.getBaseCollectionNameByClazz((Class<? extends EnhanceBaseModel>) arg);
             }
 
             if (!String.class.equals(parameter.getType())) {

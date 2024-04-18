@@ -1,7 +1,7 @@
 package io.github.chaogeoop.base.example.repository.domains;
 
 import io.github.chaogeoop.base.business.elasticsearch.*;
-import io.github.chaogeoop.base.business.mongodb.BaseModel;
+import io.github.chaogeoop.base.business.mongodb.EnhanceBaseModel;
 import io.github.chaogeoop.base.business.mongodb.ISplitCollection;
 import lombok.Getter;
 import lombok.Setter;
@@ -15,7 +15,7 @@ import java.util.List;
 @Getter
 @Document("estests")
 //@EsTableName("estestines")
-public class EsTest extends BaseModel implements ISplitCollection, IBaseEs, ISearch<EsTest> {
+public class EsTest extends EnhanceBaseModel implements ISplitCollection, IBaseEs, ISearch<EsTest> {
     @Indexed
     @EsField(type = EsTypeEnum.LONG)
     private Long familyId;

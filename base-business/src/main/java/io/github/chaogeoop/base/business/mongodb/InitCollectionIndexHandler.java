@@ -15,12 +15,12 @@ import java.util.concurrent.*;
 import java.util.function.Function;
 
 public class InitCollectionIndexHandler {
-    private final List<IPrimaryChoose<? extends BaseModel>> daoList;
+    private final List<IPrimaryChoose<? extends EnhanceBaseModel>> daoList;
     private final Set<Class<? extends ISearch<? extends IBaseEs>>> searchClazzList;
     private final Map<MongoTemplate, JestClient> databaseEsMap = new HashMap<>();
 
     public InitCollectionIndexHandler(
-            List<IPrimaryChoose<? extends BaseModel>> daoList, Set<Class<? extends ISearch<? extends IBaseEs>>> searchClazzList,
+            List<IPrimaryChoose<? extends EnhanceBaseModel>> daoList, Set<Class<? extends ISearch<? extends IBaseEs>>> searchClazzList,
             List<EsProvider> esProviders
     ) {
         this.daoList = daoList;
@@ -39,9 +39,9 @@ public class InitCollectionIndexHandler {
     private void setProperties(ExecutorService executorService) {
         Set<MongoTemplate> databaseList = new HashSet<>();
 
-        Map<MongoTemplate, List<IPrimaryChoose<? extends BaseModel>>> templateDaoListMap = CollectionHelper.groupBy(this.daoList, IPrimaryChoose::getPrimary);
+        Map<MongoTemplate, List<IPrimaryChoose<? extends EnhanceBaseModel>>> templateDaoListMap = CollectionHelper.groupBy(this.daoList, IPrimaryChoose::getPrimary);
         List<MongoInitUnit> mongoInitUnitList = new ArrayList<>();
-        for (Map.Entry<MongoTemplate, List<IPrimaryChoose<? extends BaseModel>>> entry : templateDaoListMap.entrySet()) {
+        for (Map.Entry<MongoTemplate, List<IPrimaryChoose<? extends EnhanceBaseModel>>> entry : templateDaoListMap.entrySet()) {
             MongoTemplate mongoTemplate = entry.getKey();
             databaseList.add(mongoTemplate);
 
@@ -53,8 +53,8 @@ public class InitCollectionIndexHandler {
                 baseNameListMap.add(base, name);
             }
 
-            for (IPrimaryChoose<? extends BaseModel> dao : entry.getValue()) {
-                String baseCollectionName = BaseModel.getBaseCollectionNameByClazz(dao.getModel());
+            for (IPrimaryChoose<? extends EnhanceBaseModel> dao : entry.getValue()) {
+                String baseCollectionName = EnhanceBaseModel.getBaseCollectionNameByClazz(dao.getModel());
                 List<String> list = baseNameListMap.getOrDefault(baseCollectionName, new ArrayList<>());
 
                 for (String collectionName : list) {
@@ -62,15 +62,15 @@ public class InitCollectionIndexHandler {
                 }
             }
         }
-        this.init(executorService, mongoInitUnitList, unit -> BaseModel.getAccordCollectionNamePreInit(unit.getMongoTemplate(), unit.getClazz(), unit.getCollectionName()));
+        this.init(executorService, mongoInitUnitList, unit -> EnhanceBaseModel.getAccordCollectionNamePreInit(unit.getMongoTemplate(), unit.getClazz(), unit.getCollectionName()));
 
         List<EsInitUnit> esInitUnitList = new ArrayList<>();
         for (Class<? extends ISearch<? extends IBaseEs>> clazz : this.searchClazzList) {
-            if (!BaseModel.class.isAssignableFrom(clazz)) {
+            if (!EnhanceBaseModel.class.isAssignableFrom(clazz)) {
                 continue;
             }
 
-            String baseCollectionName = BaseModel.getBaseCollectionNameByClazz((Class<? extends BaseModel>) clazz);
+            String baseCollectionName = EnhanceBaseModel.getBaseCollectionNameByClazz((Class<? extends EnhanceBaseModel>) clazz);
 
             for (MongoTemplate database : databaseList) {
                 JestClient jestClient = this.databaseEsMap.get(database);
@@ -85,7 +85,7 @@ public class InitCollectionIndexHandler {
                     continue;
                 }
 
-                BaseModel.DatabaseUnit databaseUnit = BaseModel.DatabaseUnit.of(database, baseCollectionName);
+                EnhanceBaseModel.DatabaseUnit databaseUnit = EnhanceBaseModel.DatabaseUnit.of(database, baseCollectionName);
 
                 Set<String> splitIndicates = databaseUnit.calSplitIndicates();
 
@@ -126,11 +126,11 @@ public class InitCollectionIndexHandler {
     public static class MongoInitUnit {
         private MongoTemplate mongoTemplate;
 
-        private Class<? extends BaseModel> clazz;
+        private Class<? extends EnhanceBaseModel> clazz;
 
         private String collectionName;
 
-        public static MongoInitUnit of(MongoTemplate mongoTemplate, Class<? extends BaseModel> clazz, String collectionName) {
+        public static MongoInitUnit of(MongoTemplate mongoTemplate, Class<? extends EnhanceBaseModel> clazz, String collectionName) {
             MongoInitUnit data = new MongoInitUnit();
 
             data.setMongoTemplate(mongoTemplate);

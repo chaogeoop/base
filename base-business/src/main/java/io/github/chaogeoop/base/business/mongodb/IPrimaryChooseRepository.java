@@ -10,7 +10,7 @@ import org.springframework.data.mongodb.core.query.Query;
 import java.util.ArrayList;
 import java.util.List;
 
-public interface IPrimaryChooseRepository<M extends BaseModel> extends IPrimaryChoose<M> {
+public interface IPrimaryChooseRepository<M extends EnhanceBaseModel> extends IPrimaryChoose<M> {
     default M findFirst(Predicate predicate) {
         return this.findFirst(predicate, null);
     }

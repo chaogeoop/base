@@ -1,7 +1,7 @@
 package io.github.chaogeoop.base.business.mongodb;
 
+import io.github.chaogeoop.base.business.mongodb.basic.BaseModel;
 import io.github.chaogeoop.base.business.mongodb.basic.IUidGenerator;
-import io.github.chaogeoop.base.business.mongodb.basic.RootModel;
 import io.github.chaogeoop.base.business.common.errors.BizException;
 import lombok.Getter;
 import lombok.Setter;
@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class MongoIdEntity {
     private final MongoTemplate mongoTemplate;
 
-    private final Class<? extends BaseModel> clazz;
+    private final Class<? extends EnhanceBaseModel> clazz;
 
     private final IUidGenerator uidGenerator;
 
@@ -30,7 +30,7 @@ public class MongoIdEntity {
 
 
     private MongoIdEntity(
-            MongoTemplate mongoTemplate, Class<? extends BaseModel> clazz, @Nullable IUidGenerator uidGenerator
+            MongoTemplate mongoTemplate, Class<? extends EnhanceBaseModel> clazz, @Nullable IUidGenerator uidGenerator
     ) {
         this.mongoTemplate = mongoTemplate;
         this.clazz = clazz;
@@ -39,7 +39,7 @@ public class MongoIdEntity {
         this.initDatabaseIdCacheMap(this.mongoTemplate);
 
         if (this.uidGenerator == null) {
-            BaseModel.getBaseCollectionNameByClazz(this.mongoTemplate, Uid.class);
+            EnhanceBaseModel.getBaseCollectionNameByClazz(this.mongoTemplate, Uid.class);
         }
     }
 
@@ -58,7 +58,7 @@ public class MongoIdEntity {
     }
 
     public static MongoIdEntity of(
-            MongoTemplate mongoTemplate, Class<? extends BaseModel> clazz, @Nullable IUidGenerator uidGenerator
+            MongoTemplate mongoTemplate, Class<? extends EnhanceBaseModel> clazz, @Nullable IUidGenerator uidGenerator
     ) {
         return new MongoIdEntity(mongoTemplate, clazz, uidGenerator);
     }
@@ -75,7 +75,7 @@ public class MongoIdEntity {
             return this.nextUid();
         }
 
-        String nameInIdCollection = RootModel.getNameInIdCollectionByClazz(this.clazz);
+        String nameInIdCollection = BaseModel.getNameInIdCollectionByClazz(this.clazz);
         IdCache idCacheContext = databaseIdCacheMap.get(this.mongoTemplate);
 
         long id = idCacheContext.get(nameInIdCollection);
@@ -100,7 +100,7 @@ public class MongoIdEntity {
 
 
     public List<Long> nextUids(int count) {
-        String nameInIdCollection = RootModel.getNameInIdCollectionByClazz(this.clazz);
+        String nameInIdCollection = BaseModel.getNameInIdCollectionByClazz(this.clazz);
 
         if (this.uidGenerator != null) {
             return this.uidGenerator.getUids(this.clazz, nameInIdCollection, count);
@@ -109,10 +109,10 @@ public class MongoIdEntity {
         return defaultGetUids(this.mongoTemplate, this.clazz, count);
     }
 
-    public static List<Long> defaultGetUids(MongoTemplate mongoTemplate, Class<? extends BaseModel> clazz, int count) {
-        BaseModel.getBaseCollectionNameByClazz(mongoTemplate, Uid.class);
+    public static List<Long> defaultGetUids(MongoTemplate mongoTemplate, Class<? extends EnhanceBaseModel> clazz, int count) {
+        EnhanceBaseModel.getBaseCollectionNameByClazz(mongoTemplate, Uid.class);
 
-        String nameInIdCollection = RootModel.getNameInIdCollectionByClazz(clazz);
+        String nameInIdCollection = BaseModel.getNameInIdCollectionByClazz(clazz);
 
         List<Long> ids = new ArrayList<>();
 
@@ -189,7 +189,7 @@ public class MongoIdEntity {
     @Setter
     @Getter
     @Document("defaultdocumentuids")
-    public static class Uid extends BaseModel {
+    public static class Uid extends EnhanceBaseModel {
         @Indexed(unique = true)
         private String name;
 

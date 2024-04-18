@@ -3,7 +3,7 @@ package io.github.chaogeoop.base.business.elasticsearch;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.google.common.collect.Sets;
-import io.github.chaogeoop.base.business.mongodb.BaseModel;
+import io.github.chaogeoop.base.business.mongodb.EnhanceBaseModel;
 import io.github.chaogeoop.base.business.mongodb.ISplitCollection;
 import io.github.chaogeoop.base.business.mongodb.SplitCollectionHelper;
 import io.github.chaogeoop.base.business.common.errors.BizException;
@@ -835,8 +835,8 @@ public class EsHelper {
             return esClazz.getAnnotation(EsTableName.class).value();
         }
 
-        if (BaseModel.class.isAssignableFrom(clazz)) {
-            return BaseModel.getBaseCollectionNameByClazz((Class<? extends BaseModel>) clazz);
+        if (EnhanceBaseModel.class.isAssignableFrom(clazz)) {
+            return EnhanceBaseModel.getBaseCollectionNameByClazz((Class<? extends EnhanceBaseModel>) clazz);
         }
 
         throw new BizException("数据非法");
