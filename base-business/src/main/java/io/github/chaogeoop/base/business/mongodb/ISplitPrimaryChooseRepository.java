@@ -25,7 +25,7 @@ public interface ISplitPrimaryChooseRepository<M extends EnhanceBaseModel & ISpl
     }
 
     default M findFirst(Query query, M splitKey, Sort sort) {
-        Class<M> clazz = PrimaryChooseHelper.getSplitModelWithCheck(this);
+        Class<M> clazz = this.getModel();
         String collectionName = PrimaryChooseHelper.calCollectionName(this, splitKey);
 
         return MongoHelper.findFirst(this.getAccord(), query, sort, clazz, collectionName);
@@ -51,7 +51,7 @@ public interface ISplitPrimaryChooseRepository<M extends EnhanceBaseModel & ISpl
         List<M> list = new ArrayList<>();
 
         for (String collectionName : collectionNames) {
-            list.addAll(MongoHelper.listQuery(this.getAccord(), query, fields, null, PrimaryChooseHelper.getSplitModelWithCheck(this), collectionName));
+            list.addAll(MongoHelper.listQuery(this.getAccord(), query, fields, null, this.getModel(), collectionName));
         }
 
         return list;

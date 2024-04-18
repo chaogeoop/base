@@ -76,15 +76,6 @@ public class PrimaryChooseHelper {
         return (BaseSpringDataMongodbQuery<M>) mongodbQueryBuilder;
     }
 
-    public static <M extends EnhanceBaseModel, K extends IPrimaryChoose<M>> Class<M> getSplitModelWithCheck(K dao) {
-        Class<M> model = dao.getModel();
-        if (!ISplitCollection.class.isAssignableFrom(model)) {
-            throw new BizException("未分表model的dao不能实现这个接口");
-        }
-
-        return model;
-    }
-
     public static <M extends EnhanceBaseModel, K extends IPrimaryChoose<M>> Class<M> getNormalModelWithCheck(K dao) {
         Class<M> model = dao.getModel();
         if (ISplitCollection.class.isAssignableFrom(model)) {
@@ -110,7 +101,7 @@ public class PrimaryChooseHelper {
     }
 
     public static <M extends EnhanceBaseModel, K extends IPrimaryChoose<M>> Set<String> calCollectionNames(K dao, Set<M> splitKeys) {
-        Class<M> model = getSplitModelWithCheck(dao);
+        Class<M> model = dao.getModel();
 
         Set<String> collectionNames = new HashSet<>();
         for (M splitKey : splitKeys) {
