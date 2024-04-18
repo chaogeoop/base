@@ -56,7 +56,7 @@ public class StrictRedisProvider {
         this.distributedKeyProvider = distributedKeyProvider;
     }
 
-    public DistributedKeyProvider getDistributedKeyProvider(){
+    public DistributedKeyProvider getDistributedKeyProvider() {
         return this.distributedKeyProvider;
     }
 
@@ -436,7 +436,7 @@ public class StrictRedisProvider {
     }
 
     public <K, V, T extends KeyType> Map<K, V> getMapFromValueCache(
-            T type, Duration timeout, Class<V> clazz, List<K> ids, Function<List<K>, Map<K, V>> func
+            T type, Duration timeout, Class<V> clazz, List<K> ids, Function<List<K>, Map<K, V>> func, Function<K, String> keyConverter
     ) {
         Map<K, V> map = new HashMap<>(ids.size());
         if (CollectionHelper.isEmpty(ids)) {
@@ -447,7 +447,7 @@ public class StrictRedisProvider {
 
         List<String> keys = CollectionHelper.map(
                 ids,
-                o -> this.distributedKeyProvider.getKey(KeyEntity.of(type, JsonHelper.writeValueAsString(o)))
+                o -> this.distributedKeyProvider.getKey(KeyEntity.of(type, keyConverter.apply(o)))
         );
 
         List<V> cacheList = this.multiGetIntern(keys, clazz);
@@ -477,7 +477,7 @@ public class StrictRedisProvider {
                 continue;
             }
 
-            KeyEntity<T> keyEntity = KeyEntity.of(type, JsonHelper.writeValueAsString(entry.getKey()));
+            KeyEntity<T> keyEntity = KeyEntity.of(type, keyConverter.apply(entry.getKey()));
 
             stringCacheMap.put(this.distributedKeyProvider.getKey(keyEntity), JsonHelper.writeValueAsString(entry.getValue()));
         }
@@ -490,21 +490,21 @@ public class StrictRedisProvider {
 
     public <K, V> Map<K, V> getMapFromHashCache(
             List<K> ids, Class<V> clazz, KeyEntity<? extends KeyType> keyEntity,
-            Duration duration, Function<List<K>, Map<K, V>> func
+            Duration duration, Function<List<K>, Map<K, V>> func, Function<K, String> keyConverter
     ) {
-        return this.getMapFromHashCache(ids, clazz, keyEntity, (int) duration.getSeconds(), TimeUnit.SECONDS, func);
+        return this.getMapFromHashCache(ids, clazz, keyEntity, (int) duration.getSeconds(), TimeUnit.SECONDS, func, keyConverter);
     }
 
     public <K, V> Map<K, V> getMapFromHashCache(
             List<K> ids, Class<V> clazz, KeyEntity<? extends KeyType> keyEntity,
-            int timeout, TimeUnit timeUnit, Function<List<K>, Map<K, V>> func
+            int timeout, TimeUnit timeUnit, Function<List<K>, Map<K, V>> func, Function<K, String> keyConverter
     ) {
         String key = this.distributedKeyProvider.getKey(keyEntity);
 
         Map<K, V> map = new HashMap<>(ids.size());
         List<K> needCacheIds = new ArrayList<>();
 
-        List<V> cacheList = this.hmgetIntern(key, CollectionHelper.map(ids, JsonHelper::writeValueAsString), clazz);
+        List<V> cacheList = this.hmgetIntern(key, CollectionHelper.map(ids, keyConverter), clazz);
 
         for (int i = 0; i < ids.size(); i++) {
             K field = ids.get(i);
@@ -530,7 +530,7 @@ public class StrictRedisProvider {
                 continue;
             }
 
-            stringCacheMap.put(JsonHelper.writeValueAsString(entry.getKey()), JsonHelper.writeValueAsString(entry.getValue()));
+            stringCacheMap.put(keyConverter.apply(entry.getKey()), JsonHelper.writeValueAsString(entry.getValue()));
         }
 
         if (!stringCacheMap.isEmpty()) {
