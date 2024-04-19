@@ -55,7 +55,7 @@ public class MongoMonitorAspect {
                 continue;
             }
 
-            collectionName = (String) arg;
+//            collectionName = (String) arg;
         }
 
         String targetCollectionName = "";
