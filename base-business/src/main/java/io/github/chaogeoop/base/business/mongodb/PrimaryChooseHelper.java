@@ -1,5 +1,6 @@
 package io.github.chaogeoop.base.business.mongodb;
 
+import io.github.chaogeoop.base.business.mongodb.basic.BaseModel;
 import io.github.chaogeoop.base.business.mongodb.basic.BaseSpringDataMongodbQuery;
 import io.github.chaogeoop.base.business.common.errors.BizException;
 import com.google.common.collect.Sets;
@@ -13,9 +14,9 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PrimaryChooseHelper {
     private static final ConcurrentHashMap<MongoTemplate, MongoTemplate> databaseMainMap = new ConcurrentHashMap<>();
 
-    private static final ConcurrentHashMap<EnhanceBaseModel.DatabaseUnit, MongoIdEntity> modelIdEntityMap = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<EnhanceBaseModelManager.DatabaseUnit, MongoIdEntity> modelIdEntityMap = new ConcurrentHashMap<>();
 
-    private static final ConcurrentHashMap<EnhanceBaseModel.DatabaseUnit, BaseSpringDataMongodbQuery<? extends EnhanceBaseModel>> modelQueryBuilderMap = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<EnhanceBaseModelManager.DatabaseUnit, BaseSpringDataMongodbQuery<? extends BaseModel>> modelQueryBuilderMap = new ConcurrentHashMap<>();
 
     protected static void fillDatabaseMainMap(MongoTemplate mongoTemplate, MongoTemplate mainMongoTemplate) {
         if (databaseMainMap.containsKey(mongoTemplate)) {
@@ -34,8 +35,8 @@ public class PrimaryChooseHelper {
         return mongoTemplate;
     }
 
-    protected static MongoIdEntity getMongoIdEntity(IPrimaryChoose<? extends EnhanceBaseModel> choose) {
-        EnhanceBaseModel.DatabaseUnit databaseUnit = EnhanceBaseModel.DatabaseUnit.of(choose);
+    protected static MongoIdEntity getMongoIdEntity(IPrimaryChoose<? extends BaseModel> choose) {
+        EnhanceBaseModelManager.DatabaseUnit databaseUnit = EnhanceBaseModelManager.DatabaseUnit.of(choose);
 
         MongoIdEntity mongoIdEntity = modelIdEntityMap.get(databaseUnit);
         if (mongoIdEntity != null) {
@@ -55,10 +56,10 @@ public class PrimaryChooseHelper {
         return mongoIdEntity;
     }
 
-    protected static <M extends EnhanceBaseModel, K extends IPrimaryChoose<M>> BaseSpringDataMongodbQuery<M> getMongoQueryBuilder(K choose) {
-        EnhanceBaseModel.DatabaseUnit databaseUnit = EnhanceBaseModel.DatabaseUnit.of(choose);
+    protected static <M extends BaseModel, K extends IPrimaryChoose<M>> BaseSpringDataMongodbQuery<M> getMongoQueryBuilder(K choose) {
+        EnhanceBaseModelManager.DatabaseUnit databaseUnit = EnhanceBaseModelManager.DatabaseUnit.of(choose);
 
-        BaseSpringDataMongodbQuery<? extends EnhanceBaseModel> mongodbQueryBuilder = modelQueryBuilderMap.get(databaseUnit);
+        BaseSpringDataMongodbQuery<? extends BaseModel> mongodbQueryBuilder = modelQueryBuilderMap.get(databaseUnit);
         if (mongodbQueryBuilder != null) {
             return (BaseSpringDataMongodbQuery<M>) mongodbQueryBuilder;
         }
@@ -76,7 +77,7 @@ public class PrimaryChooseHelper {
         return (BaseSpringDataMongodbQuery<M>) mongodbQueryBuilder;
     }
 
-    public static <M extends EnhanceBaseModel, K extends IPrimaryChoose<M>> Class<M> getNormalModelWithCheck(K dao) {
+    public static <M extends BaseModel, K extends IPrimaryChoose<M>> Class<M> getNormalModelWithCheck(K dao) {
         Class<M> model = dao.getModel();
         if (ISplitCollection.class.isAssignableFrom(model)) {
             throw new BizException("分表model的dao不能实现这个接口");
@@ -85,7 +86,7 @@ public class PrimaryChooseHelper {
         return model;
     }
 
-    public static <M extends EnhanceBaseModel, K extends IPrimaryChoose<M>> String calCollectionName(K dao, M splitKey) {
+    public static <M extends BaseModel, K extends IPrimaryChoose<M>> String calCollectionName(K dao, M splitKey) {
         Set<String> collectionNames = calCollectionNames(dao, Set.of(splitKey));
 
         for (String collectionName : collectionNames) {
@@ -96,11 +97,11 @@ public class PrimaryChooseHelper {
     }
 
 
-    public static <M extends EnhanceBaseModel, K extends IPrimaryChoose<M>> Set<String> calCollectionNames(K dao, List<M> splitKeys) {
+    public static <M extends BaseModel, K extends IPrimaryChoose<M>> Set<String> calCollectionNames(K dao, List<M> splitKeys) {
         return calCollectionNames(dao, Sets.newHashSet(splitKeys));
     }
 
-    public static <M extends EnhanceBaseModel, K extends IPrimaryChoose<M>> Set<String> calCollectionNames(K dao, Set<M> splitKeys) {
+    public static <M extends BaseModel, K extends IPrimaryChoose<M>> Set<String> calCollectionNames(K dao, Set<M> splitKeys) {
         Class<M> model = dao.getModel();
 
         Set<String> collectionNames = new HashSet<>();
@@ -109,7 +110,7 @@ public class PrimaryChooseHelper {
                 throw new BizException(String.format("传入的分表key错误: %s %s", model.getName(), splitKey.getClass().getName()));
             }
 
-            collectionNames.add(EnhanceBaseModel.getAccordCollectionNameByData(dao.getPrimary(), splitKey));
+            collectionNames.add(EnhanceBaseModelManager.getAccordCollectionNameByData(dao.getPrimary(), splitKey));
         }
 
         return collectionNames;

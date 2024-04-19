@@ -9,7 +9,7 @@ import io.github.chaogeoop.base.business.redis.KeyEntity;
 import io.github.chaogeoop.base.business.redis.StrictRedisProvider;
 import io.github.chaogeoop.base.business.common.entities.HttpResult;
 import io.github.chaogeoop.base.business.common.helpers.CollectionHelper;
-import io.github.chaogeoop.base.business.common.helpers.DateHelper;
+import io.github.chaogeoop.base.business.common.helpers.DateConverter;
 import io.github.chaogeoop.base.example.app.keyregisters.CommonCountKeyRegister;
 import com.google.common.collect.Lists;
 import io.github.chaogeoop.base.example.repository.entities.UserContext;
@@ -101,7 +101,7 @@ public class CommonCountController {
         Map<String, Map<String, Boolean>> map = new HashMap<>();
 
         List<String> dates = CollectionHelper.unique(input.getDates());
-        dates.sort(Comparator.comparing(o -> DateHelper.parseStringDate(o, DateHelper.DateFormatEnum.fullUntilDay)));
+        dates.sort(Comparator.comparing(o -> DateConverter.parseStringDate(o, DateConverter.DateFormatEnum.fullUntilDay)));
 
         for (CommonCountProvider.CountBiz biz : countBizList) {
             map.put(biz.giveStringKey(), new LinkedHashMap<>());
@@ -149,9 +149,9 @@ public class CommonCountController {
 
             Date occurTime = new Date();
             if (input.getOccur() != null) {
-                occurTime = DateHelper.parseStringDate(input.getOccur(), DateHelper.DateFormatEnum.fullUntilSecond);
+                occurTime = DateConverter.parseStringDate(input.getOccur(), DateConverter.DateFormatEnum.fullUntilSecond);
             }
-            String occurDate = DateHelper.dateToString(occurTime, DateHelper.DateFormatEnum.fullUntilDay);
+            String occurDate = DateConverter.dateToString(occurTime, DateConverter.DateFormatEnum.fullUntilDay);
 
             Map<CommonCountProvider.CountBizDate, Long> pubIncMap = new HashMap<>();
             for (CommonCountProvider.CountBiz countBiz : pubCountBizList) {

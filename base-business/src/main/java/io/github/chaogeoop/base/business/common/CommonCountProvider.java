@@ -5,13 +5,14 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import io.github.chaogeoop.base.business.common.interfaces.CheckResourceValidToHandleInterface;
 import io.github.chaogeoop.base.business.common.interfaces.DefaultResourceInterface;
 import io.github.chaogeoop.base.business.mongodb.*;
+import io.github.chaogeoop.base.business.mongodb.basic.BaseModel;
 import io.github.chaogeoop.base.business.redis.DistributedKeyProvider;
 import io.github.chaogeoop.base.business.redis.KeyEntity;
 import io.github.chaogeoop.base.business.redis.StrictRedisProvider;
 import io.github.chaogeoop.base.business.common.errors.BizException;
 import io.github.chaogeoop.base.business.redis.KeyType;
 import io.github.chaogeoop.base.business.common.helpers.CollectionHelper;
-import io.github.chaogeoop.base.business.common.helpers.DateHelper;
+import io.github.chaogeoop.base.business.common.helpers.DateConverter;
 import io.github.chaogeoop.base.business.common.helpers.JsonHelper;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.google.common.base.Objects;
@@ -164,7 +165,7 @@ public class CommonCountProvider {
 
         List<CountBizDate> bizDates = new ArrayList<>();
         dates = CollectionHelper.unique(dates);
-        dates.sort(Comparator.comparing(o -> DateHelper.parseStringDate(o, DateHelper.DateFormatEnum.fullUntilDay)));
+        dates.sort(Comparator.comparing(o -> DateConverter.parseStringDate(o, DateConverter.DateFormatEnum.fullUntilDay)));
 
         for (CountBiz biz : bizList) {
             map.put(biz, new LinkedHashMap<>());
@@ -176,7 +177,7 @@ public class CommonCountProvider {
 
 
         Map<String, List<CountBizDate>> collectionNameBizDatesMap = CollectionHelper.groupBy(
-                bizDates, o -> EnhanceBaseModel.getAccordCollectionNameByData(this.mongoTemplate, CommonCountDateLog.splitKeyOf(this.dateLogDbClazz, o))
+                bizDates, o -> EnhanceBaseModelManager.getAccordCollectionNameByData(this.mongoTemplate, CommonCountDateLog.splitKeyOf(this.dateLogDbClazz, o))
         );
 
         List<CommonCountDateLog> dateLogs = new ArrayList<>();
@@ -237,7 +238,7 @@ public class CommonCountProvider {
         Map<CountBiz, CommonCountTotal> map = new HashMap<>();
 
         Map<String, List<CountBiz>> collectionNameBizListMap = CollectionHelper.groupBy(
-                bizList, o -> EnhanceBaseModel.getAccordCollectionNameByData(this.mongoTemplate, CommonCountTotal.splitKeyOf(this.totalDbClazz, o))
+                bizList, o -> EnhanceBaseModelManager.getAccordCollectionNameByData(this.mongoTemplate, CommonCountTotal.splitKeyOf(this.totalDbClazz, o))
         );
 
         for (Map.Entry<String, List<CountBiz>> entry : collectionNameBizListMap.entrySet()) {
@@ -263,8 +264,8 @@ public class CommonCountProvider {
         }
 
         Date currentTime = new Date();
-        String currentDate = DateHelper.dateToString(currentTime, DateHelper.DateFormatEnum.fullUntilDay);
-        Date limitTime = DateHelper.plusDurationOfDate(currentTime, Duration.ofDays(intervalDays * -1));
+        String currentDate = DateConverter.dateToString(currentTime, DateConverter.DateFormatEnum.fullUntilDay);
+        Date limitTime = DateConverter.plusDurationOfDate(currentTime, Duration.ofDays(intervalDays * -1));
 
         Set<String> collectionNames = this.mongoTemplate.getCollectionNames();
         Set<String> totalRelativeCollectionNames = CollectionHelper.find(collectionNames, o -> SplitCollectionHelper.isClazzRelativeCollection(o, totalDbClazz));
@@ -336,7 +337,7 @@ public class CommonCountProvider {
     public MongoPersistEntity.PersistEntity insertPersistHistoryNow(
             Map<CountBiz, Long> bizIncMap
     ) {
-        String date = DateHelper.dateToString(DateHelper.plusDurationOfDate(new Date(), Duration.ofSeconds(-10)), DateHelper.DateFormatEnum.fullUntilDay);
+        String date = DateConverter.dateToString(DateConverter.plusDurationOfDate(new Date(), Duration.ofSeconds(-10)), DateConverter.DateFormatEnum.fullUntilDay);
 
         Map<CountBizDate, Long> bizDateIncMap = new HashMap<>();
         for (Map.Entry<CountBiz, Long> entry : bizIncMap.entrySet()) {
@@ -493,7 +494,7 @@ public class CommonCountProvider {
     ) {
         MongoPersistEntity.PersistEntity persistEntity = new MongoPersistEntity.PersistEntity();
 
-        String occurDate = DateHelper.dateToString(occurTime, DateHelper.DateFormatEnum.fullUntilDay);
+        String occurDate = DateConverter.dateToString(occurTime, DateConverter.DateFormatEnum.fullUntilDay);
 
         Map<CountBiz, CommonCountTotal> bizCountTotalMap = this.getBizCountTotalMap(bizIncMap.keySet());
 
@@ -635,7 +636,7 @@ public class CommonCountProvider {
             }
 
             Map<String, List<CountBizDate>> collectionNameBizDateList = CollectionHelper.groupBy(
-                    needCommonCountDateLogBizDates, o -> EnhanceBaseModel.getAccordCollectionNameByData(mongoTemplate, CommonCountDateLog.splitKeyOf(dateLogDbClazz, o))
+                    needCommonCountDateLogBizDates, o -> EnhanceBaseModelManager.getAccordCollectionNameByData(mongoTemplate, CommonCountDateLog.splitKeyOf(dateLogDbClazz, o))
             );
 
             List<CommonCountDateLog> logs = new ArrayList<>();
@@ -696,9 +697,9 @@ public class CommonCountProvider {
             this.biz = this.bizDate.extractBiz();
             this.inc = inc;
             Date currentTime = new Date();
-            this.currentDate = DateHelper.dateToString(currentTime, DateHelper.DateFormatEnum.fullUntilDay);
+            this.currentDate = DateConverter.dateToString(currentTime, DateConverter.DateFormatEnum.fullUntilDay);
 
-            if (DateHelper.parseStringDate(this.bizDate.getDate(), DateHelper.DateFormatEnum.fullUntilDay).compareTo(currentTime) > 0) {
+            if (DateConverter.parseStringDate(this.bizDate.getDate(), DateConverter.DateFormatEnum.fullUntilDay).compareTo(currentTime) > 0) {
                 throw new BizException(String.format("bizDate abnormal: %s", this.bizDate.giveStringKey()));
             }
 
@@ -706,11 +707,11 @@ public class CommonCountProvider {
 
             this.needLock = !Objects.equal(this.bizDate.getDate(), this.commonCountTotal.getLatestCacheDate());
             if (!this.needLock) {
-                Date endTime = DateHelper.endOfDay(currentTime);
-                Date startTime = DateHelper.startOfDay(currentTime);
+                Date endTime = DateConverter.endOfDay(currentTime);
+                Date startTime = DateConverter.startOfDay(currentTime);
 
-                this.needLock = currentTime.after(DateHelper.plusDurationOfDate(endTime, Duration.ofSeconds(-30))) ||
-                        currentTime.before(DateHelper.plusDurationOfDate(startTime, Duration.ofSeconds(30)));
+                this.needLock = currentTime.after(DateConverter.plusDurationOfDate(endTime, Duration.ofSeconds(-30))) ||
+                        currentTime.before(DateConverter.plusDurationOfDate(startTime, Duration.ofSeconds(30)));
             }
             if (!this.needLock) {
                 this.needLock = !Objects.equal(this.bizDate.getDate(), this.currentDate);
@@ -720,11 +721,11 @@ public class CommonCountProvider {
         private CountBizEntity(CommonCountTotal countTotal, Date occurTime, long inc) {
             this.isDistributeSafe = true;
             Date currentTime = new Date();
-            this.currentDate = DateHelper.dateToString(currentTime, DateHelper.DateFormatEnum.fullUntilDay);
+            this.currentDate = DateConverter.dateToString(currentTime, DateConverter.DateFormatEnum.fullUntilDay);
             if (occurTime.compareTo(currentTime) > 0) {
-                throw new BizException(String.format("occurTime abnormal: %s ", DateHelper.dateToString(occurTime, DateHelper.DateFormatEnum.fullUntilMill)));
+                throw new BizException(String.format("occurTime abnormal: %s ", DateConverter.dateToString(occurTime, DateConverter.DateFormatEnum.fullUntilMill)));
             }
-            String occurDate = DateHelper.dateToString(occurTime, DateHelper.DateFormatEnum.fullUntilDay);
+            String occurDate = DateConverter.dateToString(occurTime, DateConverter.DateFormatEnum.fullUntilDay);
             this.biz = countTotal.extractBiz();
             this.bizDate = this.biz.convertToBizDate(occurDate);
             this.inc = inc;
@@ -873,7 +874,7 @@ public class CommonCountProvider {
                 return;
             }
 
-            String collectionName = EnhanceBaseModel.getAccordCollectionNameByData(mongoTemplate, CommonCountTotal.splitKeyOf(totalDbClazz, this.biz));
+            String collectionName = EnhanceBaseModelManager.getAccordCollectionNameByData(mongoTemplate, CommonCountTotal.splitKeyOf(totalDbClazz, this.biz));
 
             DefaultResourceInterface<CommonCountTotal> entity = new DefaultResourceInterface<>() {
                 @Override
@@ -944,8 +945,8 @@ public class CommonCountProvider {
         private CacheStateEnum calCacheState() {
             CacheStateEnum cacheState;
 
-            int compareResult = DateHelper.parseStringDate(this.commonCountTotal.getLatestCacheDate(), DateHelper.DateFormatEnum.fullUntilDay).
-                    compareTo(DateHelper.parseStringDate(this.bizDate.getDate(), DateHelper.DateFormatEnum.fullUntilDay));
+            int compareResult = DateConverter.parseStringDate(this.commonCountTotal.getLatestCacheDate(), DateConverter.DateFormatEnum.fullUntilDay).
+                    compareTo(DateConverter.parseStringDate(this.bizDate.getDate(), DateConverter.DateFormatEnum.fullUntilDay));
 
             if (compareResult < 0) {
                 cacheState = CacheStateEnum.FORWARD;
@@ -1004,7 +1005,7 @@ public class CommonCountProvider {
             }
 
             if (CacheStateEnum.NO_CACHE.equals(this.cacheState)) {
-                String collectionName = EnhanceBaseModel.getAccordCollectionNameByData(mongoTemplate, CommonCountDateLog.splitKeyOf(dateLogDbClazz, this.bizDate));
+                String collectionName = EnhanceBaseModelManager.getAccordCollectionNameByData(mongoTemplate, CommonCountDateLog.splitKeyOf(dateLogDbClazz, this.bizDate));
 
                 Query query = new Query();
 
@@ -1164,7 +1165,7 @@ public class CommonCountProvider {
             @CompoundIndex(name = "typeId_bizType_subBizType", def = "{'t':1, 'b':1, 's': 1}", unique = true),
             @CompoundIndex(name = "scope_latestCacheStamp_dataIsCold", def = "{'sc':1, 'st':1, 'c':1}")
     })
-    public static class CommonCountTotal extends EnhanceBaseModel implements ISplitCollection {
+    public static class CommonCountTotal extends BaseModel implements ISplitCollection {
         @Field(value = "t")
         private String typeId;
 
@@ -1198,7 +1199,7 @@ public class CommonCountProvider {
 
         public void setLatestCacheDate(String date) {
             this.latestCacheDate = date;
-            this.latestCacheStamp = DateHelper.parseStringDate(date, DateHelper.DateFormatEnum.fullUntilDay).getTime();
+            this.latestCacheStamp = DateConverter.parseStringDate(date, DateConverter.DateFormatEnum.fullUntilDay).getTime();
         }
 
         @Override
@@ -1297,7 +1298,7 @@ public class CommonCountProvider {
     @CompoundIndexes({
             @CompoundIndex(name = "typeId_bizType_subBizType_date", def = "{'t':1, 'b':1, 's': 1, 'd': 1}", unique = true)
     })
-    public static class CommonCountDateLog extends EnhanceBaseModel implements ISplitCollection {
+    public static class CommonCountDateLog extends BaseModel implements ISplitCollection {
         @Field(value = "t")
         private String typeId;
 
@@ -1322,9 +1323,9 @@ public class CommonCountProvider {
 
         @Override
         public String calSplitIndex() {
-            Date date = DateHelper.parseStringDate(this.date, DateHelper.DateFormatEnum.fullUntilDay);
+            Date date = DateConverter.parseStringDate(this.date, DateConverter.DateFormatEnum.fullUntilDay);
 
-            return DateHelper.dateToString(date, DateHelper.DateFormatEnum.fullUntilMonth);
+            return DateConverter.dateToString(date, DateConverter.DateFormatEnum.fullUntilMonth);
         }
 
         public CountBiz extractBiz() {

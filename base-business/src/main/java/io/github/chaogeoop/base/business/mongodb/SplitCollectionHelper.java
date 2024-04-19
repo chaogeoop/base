@@ -1,5 +1,7 @@
 package io.github.chaogeoop.base.business.mongodb;
 
+import io.github.chaogeoop.base.business.mongodb.basic.BaseModel;
+
 import javax.annotation.Nullable;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -28,8 +30,8 @@ public class SplitCollectionHelper {
         return matcher.group().replace(SPLIT_SYMBOL, "");
     }
 
-    public static boolean isClazzRelativeCollection(String collectionName, Class<? extends EnhanceBaseModel> clazz) {
-        String baseCollectionName = EnhanceBaseModel.getBaseCollectionNameByClazz(clazz);
+    public static boolean isClazzRelativeCollection(String collectionName, Class<? extends BaseModel> clazz) {
+        String baseCollectionName = BaseModel.getBaseCollectionNameByClazz(clazz);
         if (collectionName.equals(baseCollectionName)) {
             return true;
         }

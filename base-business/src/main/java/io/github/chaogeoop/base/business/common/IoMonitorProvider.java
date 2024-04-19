@@ -3,7 +3,8 @@ package io.github.chaogeoop.base.business.common;
 import io.github.chaogeoop.base.business.common.entities.IoStatistic;
 import io.github.chaogeoop.base.business.common.interfaces.DefaultResourceInterface;
 import io.github.chaogeoop.base.business.common.interfaces.IoMonitorPersist;
-import io.github.chaogeoop.base.business.mongodb.EnhanceBaseModel;
+import io.github.chaogeoop.base.business.mongodb.EnhanceBaseModelManager;
+import io.github.chaogeoop.base.business.mongodb.basic.BaseModel;
 import io.github.chaogeoop.base.business.redis.KeyEntity;
 import io.github.chaogeoop.base.business.redis.StrictRedisProvider;
 import io.github.chaogeoop.base.business.common.errors.BizException;
@@ -39,7 +40,7 @@ public class IoMonitorProvider implements IoMonitorPersist {
         this.ioMonitorSender = ioMonitorSender;
         this.logDbClazz = logDbClazz;
 
-        EnhanceBaseModel.getBaseCollectionNameByClazz(this.mongoTemplate, this.logDbClazz);
+        EnhanceBaseModelManager.getBaseCollectionNameByClazz(this.mongoTemplate, this.logDbClazz);
     }
 
     @Override
@@ -159,7 +160,7 @@ public class IoMonitorProvider implements IoMonitorPersist {
 
     @Setter
     @Getter
-    public static class MonitorLog extends EnhanceBaseModel {
+    public static class MonitorLog extends BaseModel {
         @Indexed(unique = true)
         private String funcName;
 

@@ -1,5 +1,6 @@
 package io.github.chaogeoop.base.business.mongodb;
 
+import io.github.chaogeoop.base.business.mongodb.basic.BaseModel;
 import io.github.chaogeoop.base.business.mongodb.basic.MongoHelper;
 import com.querydsl.core.types.Predicate;
 import org.springframework.data.domain.Sort;
@@ -9,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-public interface ISplitPrimaryChooseRepository<M extends EnhanceBaseModel & ISplitCollection> extends IPrimaryChoose<M> {
+public interface ISplitPrimaryChooseRepository<M extends BaseModel & ISplitCollection> extends IPrimaryChoose<M> {
     default M findFirst(Predicate predicate, M splitKey) {
         return this.findFirst(predicate, splitKey, null);
     }

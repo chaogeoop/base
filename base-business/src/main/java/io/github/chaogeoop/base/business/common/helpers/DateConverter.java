@@ -6,7 +6,7 @@ import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.util.Date;
 
-public class DateHelper {
+public class DateConverter {
     private static final ZoneId DEFAULT_ZONE_ID = ZoneId.systemDefault();
 
     public static Date parseStringDate(String stringDate, DateFormatEnum format) {

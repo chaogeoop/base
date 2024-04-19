@@ -2,8 +2,9 @@ package io.github.chaogeoop.base.business.elasticsearch;
 
 import io.github.chaogeoop.base.business.common.entities.EsPageSplitter;
 import io.github.chaogeoop.base.business.common.interfaces.CheckResourceValidToHandleInterface;
-import io.github.chaogeoop.base.business.mongodb.EnhanceBaseModel;
+import io.github.chaogeoop.base.business.mongodb.EnhanceBaseModelManager;
 import io.github.chaogeoop.base.business.mongodb.MongoPersistEntity;
+import io.github.chaogeoop.base.business.mongodb.basic.BaseModel;
 import io.github.chaogeoop.base.business.redis.KeyEntity;
 import io.github.chaogeoop.base.business.redis.StrictRedisProvider;
 import io.github.chaogeoop.base.business.common.errors.BizException;
@@ -56,7 +57,7 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
 
         databaseEsMap.put(this.mongoTemplate, this.jestClient);
 
-        EnhanceBaseModel.getBaseCollectionNameByClazz(this.mongoTemplate, this.logDbClazz);
+        EnhanceBaseModelManager.getBaseCollectionNameByClazz(this.mongoTemplate, this.logDbClazz);
     }
 
     public MongoTemplate giveMongoTemplate() {
@@ -75,15 +76,15 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
 
         List<SyncLog> logs = new ArrayList<>();
 
-        Map<ActionEnum, MultiValueMap<MongoPersistEntity.ModelClazzCollectionName, EnhanceBaseModel>> map = new HashMap<>();
+        Map<ActionEnum, MultiValueMap<MongoPersistEntity.ModelClazzCollectionName, BaseModel>> map = new HashMap<>();
         map.put(ActionEnum.INSERT, persistMap.getInsertMap());
         map.put(ActionEnum.UPDATE, persistMap.getSaveMap());
         map.put(ActionEnum.DELETE, persistMap.getDeleteMap());
 
         Set<EsHelper.EsUnitInfo> esUnitInfoSet = new HashSet<>();
 
-        for (Map.Entry<ActionEnum, MultiValueMap<MongoPersistEntity.ModelClazzCollectionName, EnhanceBaseModel>> actionEntry : map.entrySet()) {
-            for (Map.Entry<MongoPersistEntity.ModelClazzCollectionName, List<EnhanceBaseModel>> entry : actionEntry.getValue().entrySet()) {
+        for (Map.Entry<ActionEnum, MultiValueMap<MongoPersistEntity.ModelClazzCollectionName, BaseModel>> actionEntry : map.entrySet()) {
+            for (Map.Entry<MongoPersistEntity.ModelClazzCollectionName, List<BaseModel>> entry : actionEntry.getValue().entrySet()) {
                 if (!ISearch.class.isAssignableFrom(entry.getKey().getModelClazz())) {
                     continue;
                 }
@@ -94,7 +95,7 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
                 EsHelper.EsUnitInfo esUnitInfo = EsHelper.EsUnitInfo.of((ISearch<? extends IBaseEs>) entry.getValue().get(0), this.jestClient);
                 esUnitInfoSet.add(esUnitInfo);
 
-                for (EnhanceBaseModel obj : entry.getValue()) {
+                for (BaseModel obj : entry.getValue()) {
                     String esJson = ((ISearch<?>) obj).giveEsJson();
                     if (esJson == null) {
                         continue;
@@ -279,7 +280,7 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
     @CompoundIndexes({
             @CompoundIndex(name = "esName_uniqueId", def = "{'esName':1, 'uniqueId':1}"),
     })
-    public static class SyncLog extends EnhanceBaseModel {
+    public static class SyncLog extends BaseModel {
         private String baseEsName;
 
         private String esName;

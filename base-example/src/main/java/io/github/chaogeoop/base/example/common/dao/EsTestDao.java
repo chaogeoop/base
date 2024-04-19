@@ -4,7 +4,7 @@ import com.google.common.collect.Lists;
 import io.github.chaogeoop.base.business.common.entities.EsPageSplitter;
 import io.github.chaogeoop.base.business.elasticsearch.EsHelper;
 import io.github.chaogeoop.base.business.elasticsearch.EsProvider;
-import io.github.chaogeoop.base.business.mongodb.EnhanceBaseModel;
+import io.github.chaogeoop.base.business.mongodb.EnhanceBaseModelManager;
 import io.github.chaogeoop.base.business.mongodb.ISplitPrimaryChooseRepository;
 import io.github.chaogeoop.base.business.common.entities.ListPage;
 import io.github.chaogeoop.base.business.common.helpers.CollectionHelper;
@@ -75,7 +75,7 @@ public class EsTestDao implements ISplitPrimaryChooseRepository<EsTest> {
         QEsTest qe = QEsTest.esTest;
 
         Map<String, List<Long>> collectionNameFamilyIdsMap = CollectionHelper.groupBy(
-                familyIds, o -> EnhanceBaseModel.getAccordCollectionNameByData(this.getPrimary(), EsTest.splitKeyOf(o))
+                familyIds, o -> EnhanceBaseModelManager.getAccordCollectionNameByData(this.getPrimary(), EsTest.splitKeyOf(o))
         );
 
         for (Map.Entry<String, List<Long>> entry : collectionNameFamilyIdsMap.entrySet()) {

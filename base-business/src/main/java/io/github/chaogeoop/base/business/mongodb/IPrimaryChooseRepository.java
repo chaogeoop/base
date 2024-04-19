@@ -1,5 +1,6 @@
 package io.github.chaogeoop.base.business.mongodb;
 
+import io.github.chaogeoop.base.business.mongodb.basic.BaseModel;
 import io.github.chaogeoop.base.business.mongodb.basic.MongoHelper;
 import io.github.chaogeoop.base.business.common.entities.ListPage;
 import io.github.chaogeoop.base.business.common.entities.MongoPageSplitter;
@@ -10,7 +11,7 @@ import org.springframework.data.mongodb.core.query.Query;
 import java.util.ArrayList;
 import java.util.List;
 
-public interface IPrimaryChooseRepository<M extends EnhanceBaseModel> extends IPrimaryChoose<M> {
+public interface IPrimaryChooseRepository<M extends BaseModel> extends IPrimaryChoose<M> {
     default M findFirst(Predicate predicate) {
         return this.findFirst(predicate, null);
     }

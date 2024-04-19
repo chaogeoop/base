@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class MongoIdEntity {
     private final MongoTemplate mongoTemplate;
 
-    private final Class<? extends EnhanceBaseModel> clazz;
+    private final Class<? extends BaseModel> clazz;
 
     private final IUidGenerator uidGenerator;
 
@@ -30,7 +30,7 @@ public class MongoIdEntity {
 
 
     private MongoIdEntity(
-            MongoTemplate mongoTemplate, Class<? extends EnhanceBaseModel> clazz, @Nullable IUidGenerator uidGenerator
+            MongoTemplate mongoTemplate, Class<? extends BaseModel> clazz, @Nullable IUidGenerator uidGenerator
     ) {
         this.mongoTemplate = mongoTemplate;
         this.clazz = clazz;
@@ -39,7 +39,7 @@ public class MongoIdEntity {
         this.initDatabaseIdCacheMap(this.mongoTemplate);
 
         if (this.uidGenerator == null) {
-            EnhanceBaseModel.getBaseCollectionNameByClazz(this.mongoTemplate, Uid.class);
+            EnhanceBaseModelManager.getBaseCollectionNameByClazz(this.mongoTemplate, Uid.class);
         }
     }
 
@@ -58,7 +58,7 @@ public class MongoIdEntity {
     }
 
     public static MongoIdEntity of(
-            MongoTemplate mongoTemplate, Class<? extends EnhanceBaseModel> clazz, @Nullable IUidGenerator uidGenerator
+            MongoTemplate mongoTemplate, Class<? extends BaseModel> clazz, @Nullable IUidGenerator uidGenerator
     ) {
         return new MongoIdEntity(mongoTemplate, clazz, uidGenerator);
     }
@@ -109,8 +109,8 @@ public class MongoIdEntity {
         return defaultGetUids(this.mongoTemplate, this.clazz, count);
     }
 
-    public static List<Long> defaultGetUids(MongoTemplate mongoTemplate, Class<? extends EnhanceBaseModel> clazz, int count) {
-        EnhanceBaseModel.getBaseCollectionNameByClazz(mongoTemplate, Uid.class);
+    public static List<Long> defaultGetUids(MongoTemplate mongoTemplate, Class<? extends BaseModel> clazz, int count) {
+        EnhanceBaseModelManager.getBaseCollectionNameByClazz(mongoTemplate, Uid.class);
 
         String nameInIdCollection = BaseModel.getNameInIdCollectionByClazz(clazz);
 
@@ -189,7 +189,7 @@ public class MongoIdEntity {
     @Setter
     @Getter
     @Document("defaultdocumentuids")
-    public static class Uid extends EnhanceBaseModel {
+    public static class Uid extends BaseModel {
         @Indexed(unique = true)
         private String name;
 
