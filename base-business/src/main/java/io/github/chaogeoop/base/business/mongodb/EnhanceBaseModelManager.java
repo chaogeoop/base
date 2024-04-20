@@ -264,7 +264,7 @@ public class EnhanceBaseModelManager {
 
 
         for (CompoundIndex compoundIndex : compoundIndexList) {
-            LinkedHashMap<String, Integer> map = JsonHelper.readValue(compoundIndex.def(), new TypeReference<>() {
+            LinkedHashMap<String, Integer> map = JsonHelper.readValue(compoundIndex.def().replace("'", "\""), new TypeReference<>() {
             });
             if (map == null) {
                 map = new LinkedHashMap<>();
