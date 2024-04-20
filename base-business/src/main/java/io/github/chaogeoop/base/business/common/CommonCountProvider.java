@@ -699,9 +699,9 @@ public class CommonCountProvider {
             Date currentTime = new Date();
             this.currentDate = DateConverter.dateToString(currentTime, DateConverter.DateFormatEnum.fullUntilDay);
 
-            if (DateConverter.parseStringDate(this.bizDate.getDate(), DateConverter.DateFormatEnum.fullUntilDay).compareTo(currentTime) > 0) {
-                throw new BizException(String.format("bizDate abnormal: %s", this.bizDate.giveStringKey()));
-            }
+//            if (DateConverter.parseStringDate(this.bizDate.getDate(), DateConverter.DateFormatEnum.fullUntilDay).compareTo(currentTime) > 0) {
+//                throw new BizException(String.format("bizDate abnormal: %s", this.bizDate.giveStringKey()));
+//            }
 
             this.setCommonCountTotal();
 
@@ -722,9 +722,9 @@ public class CommonCountProvider {
             this.isDistributeSafe = true;
             Date currentTime = new Date();
             this.currentDate = DateConverter.dateToString(currentTime, DateConverter.DateFormatEnum.fullUntilDay);
-            if (occurTime.compareTo(currentTime) > 0) {
-                throw new BizException(String.format("occurTime abnormal: %s ", DateConverter.dateToString(occurTime, DateConverter.DateFormatEnum.fullUntilMill)));
-            }
+//            if (occurTime.compareTo(currentTime) > 0) {
+//                throw new BizException(String.format("occurTime abnormal: %s ", DateConverter.dateToString(occurTime, DateConverter.DateFormatEnum.fullUntilMill)));
+//            }
             String occurDate = DateConverter.dateToString(occurTime, DateConverter.DateFormatEnum.fullUntilDay);
             this.biz = countTotal.extractBiz();
             this.bizDate = this.biz.convertToBizDate(occurDate);
