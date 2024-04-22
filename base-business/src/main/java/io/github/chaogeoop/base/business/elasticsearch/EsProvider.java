@@ -21,6 +21,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.CompoundIndexes;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.util.MultiValueMap;
@@ -296,6 +297,7 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
 
         private String data;
 
+        @Indexed
         private String scope;
 
         public void setVersion(Long version) {
