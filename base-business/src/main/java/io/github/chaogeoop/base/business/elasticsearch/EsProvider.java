@@ -115,6 +115,7 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
                     log.setVersion(obj.getV());
                     log.setAction(actionEntry.getKey());
                     log.setData(esJson);
+                    log.setScope(this.redisAbout.getStrictRedisProvider().getDistributedKeyProvider().getScope());
 
                     logs.add(log);
                 }
@@ -294,6 +295,8 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
         private ActionEnum action;
 
         private String data;
+
+        private String scope;
 
         public void setVersion(Long version) {
             if (version == null) {
