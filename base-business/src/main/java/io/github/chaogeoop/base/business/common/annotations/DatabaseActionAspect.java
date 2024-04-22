@@ -37,34 +37,8 @@ public class DatabaseActionAspect {
         Parameter[] parameters = method.getParameters();
         DatabaseAction annotation = method.getAnnotation(DatabaseAction.class);
 
-        IUserContext userContext = null;
-
-        for (int i = 0; i < parameters.length; i++) {
-            Parameter parameter = parameters[i];
-
-            if (!parameter.isAnnotationPresent(UserInfo.class)) {
-                continue;
-            }
-
-            if (!IUserContext.class.isAssignableFrom(parameter.getType())) {
-                throw new BizException("only UserContext can have UserInfo annotation");
-            }
-
-            Object arg = args[i];
-            if (arg == null) {
-                throw new BizException("UserContext is null");
-            }
-
-            userContext = (IUserContext) arg;
-
-            break;
-        }
-
-        if (userContext == null) {
-            throw new BizException("cant find UserContext");
-        }
-
         if (DatabaseActionEnum.JUDGE_READ.equals(annotation.action())) {
+            IUserContext userContext = getUserContext(parameters, args);
             Long stamp = this.handler.read(userContext);
             if (stamp == null) {
                 stamp = new Date().getTime() - Duration.ofSeconds(annotation.choosePrimarySeconds()).toMillis();
@@ -86,35 +60,9 @@ public class DatabaseActionAspect {
         Parameter[] parameters = method.getParameters();
         DatabaseAction annotation = method.getAnnotation(DatabaseAction.class);
 
-        IUserContext userContext = null;
-
-        for (int i = 0; i < parameters.length; i++) {
-            Parameter parameter = parameters[i];
-
-            if (!parameter.isAnnotationPresent(UserInfo.class)) {
-                continue;
-            }
-
-            if (!IUserContext.class.isAssignableFrom(parameter.getType())) {
-                throw new BizException("only UserContext can have UserInfo annotation");
-            }
-
-            Object arg = args[i];
-            if (arg == null) {
-                throw new BizException("UseContext is null");
-            }
-
-            userContext = (IUserContext) arg;
-
-            break;
-        }
-
-        if (userContext == null) {
-            throw new BizException("cant find UserContext");
-        }
-
         try {
             if (DatabaseActionEnum.WRITTEN_SOON_READ.equals(annotation.action())) {
+                IUserContext userContext = getUserContext(parameters, args);
                 this.handler.record(userContext, new Date().getTime() + Duration.ofSeconds(annotation.choosePrimarySeconds()).toMillis());
             }
         } catch (Exception e) {
@@ -122,5 +70,28 @@ public class DatabaseActionAspect {
         } finally {
             PrimaryChooseHolder.remove();
         }
+    }
+
+    private static IUserContext getUserContext(Parameter[] parameters, Object[] args) {
+        IUserContext userContext = null;
+
+        for (int i = 0; i < parameters.length; i++) {
+            Parameter parameter = parameters[i];
+
+            if (!IUserContext.class.isAssignableFrom(parameter.getType())) {
+                continue;
+            }
+
+            Object arg = args[i];
+            if (arg == null) {
+                continue;
+            }
+
+            userContext = (IUserContext) arg;
+
+            break;
+        }
+
+        return userContext;
     }
 }
