@@ -76,6 +76,8 @@ public class IoMonitorAspect {
                     this.handler.handle(ioStatistic);
                 }
             }
+        } catch (Exception ignored) {
+
         } finally {
             IoMonitorHolder.remove();
         }
