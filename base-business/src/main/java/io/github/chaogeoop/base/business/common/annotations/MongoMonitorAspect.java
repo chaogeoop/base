@@ -1,5 +1,6 @@
 package io.github.chaogeoop.base.business.common.annotations;
 
+import io.github.chaogeoop.base.business.mongodb.SplitCollectionHelper;
 import io.github.chaogeoop.base.business.mongodb.basic.BaseModel;
 import io.github.chaogeoop.base.business.threadlocals.IoMonitorHolder;
 import org.apache.commons.lang3.StringUtils;
@@ -40,31 +41,7 @@ public class MongoMonitorAspect {
         Method method = ((MethodSignature) jp.getSignature()).getMethod();
         Parameter[] parameters = method.getParameters();
 
-        String collectionName = "";
-        String baseCollectionName = "";
-
-        for (int i = 0; i < parameters.length; i++) {
-            Parameter parameter = parameters[i];
-            Object arg = args[i];
-
-            if (arg instanceof Class && BaseModel.class.isAssignableFrom((Class<?>) arg)) {
-                baseCollectionName = BaseModel.getBaseCollectionNameByClazz((Class<? extends BaseModel>) arg);
-            }
-
-            if (!String.class.equals(parameter.getType())) {
-                continue;
-            }
-
-//            collectionName = (String) arg;
-        }
-
-        String targetCollectionName = "";
-
-        if (!StringUtils.isBlank(collectionName)) {
-            targetCollectionName = collectionName;
-        } else if (!StringUtils.isBlank(baseCollectionName)) {
-            targetCollectionName = baseCollectionName;
-        }
+        String targetCollectionName = getTargetCollectionName(parameters, args);
 
         if (StringUtils.isBlank(targetCollectionName)) {
             return;
@@ -75,5 +52,46 @@ public class MongoMonitorAspect {
         } else {
             IoMonitorHolder.incDatabase(targetCollectionName);
         }
+    }
+
+    private String getTargetCollectionName(Parameter[] parameters, Object[] args) {
+        String collectionName = "";
+        String baseCollectionName = "";
+        Class<? extends BaseModel> clazz = null;
+
+        for (int i = 0; i < parameters.length; i++) {
+            Parameter parameter = parameters[i];
+            Object arg = args[i];
+
+            if (arg instanceof Class && BaseModel.class.isAssignableFrom((Class<?>) arg)) {
+                try {
+                    baseCollectionName = BaseModel.getBaseCollectionNameByClazz((Class<? extends BaseModel>) arg);
+                    clazz = (Class<? extends BaseModel>) arg;
+                } catch (Exception ignored) {
+
+                }
+            }
+
+            if (!String.class.equals(parameter.getType()) || !(arg instanceof String)) {
+                continue;
+            }
+
+            collectionName = (String) arg;
+        }
+
+
+        if (!StringUtils.isBlank(collectionName)) {
+            if (clazz == null) {
+                return collectionName;
+            }
+
+            if (SplitCollectionHelper.isClazzRelativeCollection(collectionName, clazz)) {
+                return baseCollectionName;
+            }
+
+            return collectionName;
+        }
+
+        return baseCollectionName;
     }
 }

@@ -44,7 +44,9 @@ public class IoMonitorAspect {
         IoMonitor annotation = method.getAnnotation(IoMonitor.class);
 
         try {
-            IoStatistic ioStatistic = IoMonitorHolder.get();
+            String funcName = method.getDeclaringClass().getName() + "." + method.getName();
+            IoStatistic ioStatistic = IoMonitorHolder.get(funcName);
+            IoMonitorHolder.removeFunc(funcName);
 
             int randomValue;
             if (this.isDev) {

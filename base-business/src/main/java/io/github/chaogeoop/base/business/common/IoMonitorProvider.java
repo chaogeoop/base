@@ -1,6 +1,7 @@
 package io.github.chaogeoop.base.business.common;
 
 import io.github.chaogeoop.base.business.common.entities.IoStatistic;
+import io.github.chaogeoop.base.business.common.helpers.CollectionHelper;
 import io.github.chaogeoop.base.business.common.interfaces.DefaultResourceInterface;
 import io.github.chaogeoop.base.business.common.interfaces.IoMonitorPersist;
 import io.github.chaogeoop.base.business.mongodb.EnhanceBaseModelManager;
@@ -11,6 +12,7 @@ import io.github.chaogeoop.base.business.common.errors.BizException;
 import io.github.chaogeoop.base.business.redis.KeyType;
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -18,9 +20,7 @@ import org.springframework.data.mongodb.core.query.Query;
 
 import javax.annotation.Nullable;
 import javax.lang.model.type.NullType;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 
 public class IoMonitorProvider implements IoMonitorPersist {
@@ -69,7 +69,22 @@ public class IoMonitorProvider implements IoMonitorPersist {
 
                 query.addCriteria(Criteria.where("funcName").is(newLog.getFuncName()));
 
-                return mongoTemplate.findOne(query, logDbClazz);
+                MonitorLog log = mongoTemplate.findOne(query, logDbClazz);
+                if (log != null) {
+                    for (NameCount nameCount : log.getDatabase()) {
+                        log.getDatabaseTmp().put(nameCount.getName(), nameCount.getCount());
+                    }
+
+                    for (NameCount nameCount : log.getCount()) {
+                        log.getCountTmp().put(nameCount.getName(), nameCount.getCount());
+                    }
+
+                    for (NameCount nameCount : log.getRedis()) {
+                        log.getRedisTmp().put(nameCount.getName(), nameCount.getCount());
+                    }
+                }
+
+                return log;
             }
 
             @Override
@@ -82,9 +97,9 @@ public class IoMonitorProvider implements IoMonitorPersist {
                 }
 
                 data.setFuncName(newLog.getFuncName());
-                data.setDatabase(newLog.getDatabase());
-                data.setCount(newLog.getCount());
-                data.setRedis(newLog.getRedis());
+                data.setDatabaseTmp(newLog.getDatabase());
+                data.setCountTmp(newLog.getCount());
+                data.setRedisTmp(newLog.getRedis());
                 data.setCreated(new Date());
 
                 return data;
@@ -107,25 +122,25 @@ public class IoMonitorProvider implements IoMonitorPersist {
                 needSave = existDbLogHandler.apply(existDbLog);
             } else {
                 for (Map.Entry<String, Long> entry : newLog.getDatabase().entrySet()) {
-                    Long oldValue = existDbLog.getDatabase().get(entry.getKey());
+                    Long oldValue = existDbLog.getDatabaseTmp().get(entry.getKey());
                     if (oldValue == null || oldValue < entry.getValue()) {
-                        existDbLog.getDatabase().put(entry.getKey(), entry.getValue());
+                        existDbLog.getDatabaseTmp().put(entry.getKey(), entry.getValue());
                         needSave = true;
                     }
                 }
 
                 for (Map.Entry<String, Long> entry : newLog.getCount().entrySet()) {
-                    Long oldValue = existDbLog.getCount().get(entry.getKey());
+                    Long oldValue = existDbLog.getCountTmp().get(entry.getKey());
                     if (oldValue == null || oldValue < entry.getValue()) {
-                        existDbLog.getCount().put(entry.getKey(), entry.getValue());
+                        existDbLog.getCountTmp().put(entry.getKey(), entry.getValue());
                         needSave = true;
                     }
                 }
 
                 for (Map.Entry<String, Long> entry : newLog.getRedis().entrySet()) {
-                    Long oldValue = existDbLog.getRedis().get(entry.getKey());
+                    Long oldValue = existDbLog.getRedisTmp().get(entry.getKey());
                     if (oldValue == null || oldValue < entry.getValue()) {
-                        existDbLog.getRedis().put(entry.getKey(), entry.getValue());
+                        existDbLog.getRedisTmp().put(entry.getKey(), entry.getValue());
                         needSave = true;
                     }
                 }
@@ -164,11 +179,20 @@ public class IoMonitorProvider implements IoMonitorPersist {
         @Indexed(unique = true)
         private String funcName;
 
-        private Map<String, Long> database = new HashMap<>();
+        @Transient
+        private Map<String, Long> databaseTmp = new HashMap<>();
 
-        private Map<String, Long> count = new HashMap<>();
+        @Transient
+        private Map<String, Long> countTmp = new HashMap<>();
 
-        private Map<String, Long> redis = new HashMap<>();
+        @Transient
+        private Map<String, Long> redisTmp = new HashMap<>();
+
+        private List<NameCount> database = new ArrayList<>();
+
+        private List<NameCount> count = new ArrayList<>();
+
+        private List<NameCount> redis = new ArrayList<>();
 
         @Indexed
         private Long databaseTotal = 0L;
@@ -182,21 +206,44 @@ public class IoMonitorProvider implements IoMonitorPersist {
         private Date created = new Date();
 
         public void calTotal() {
+            this.database.clear();
+            this.count.clear();
+            this.redis.clear();
             this.databaseTotal = 0L;
             this.countTotal = 0L;
             this.redisTotal = 0L;
 
-            for (Map.Entry<String, Long> entry : this.database.entrySet()) {
+            for (Map.Entry<String, Long> entry : this.databaseTmp.entrySet()) {
                 this.databaseTotal += entry.getValue();
+                this.database.add(NameCount.of(entry.getKey(), entry.getValue()));
             }
 
-            for (Map.Entry<String, Long> entry : this.count.entrySet()) {
+            for (Map.Entry<String, Long> entry : this.countTmp.entrySet()) {
                 this.countTotal += entry.getValue();
+                this.count.add(NameCount.of(entry.getKey(), entry.getValue()));
             }
 
-            for (Map.Entry<String, Long> entry : this.redis.entrySet()) {
+            for (Map.Entry<String, Long> entry : this.redisTmp.entrySet()) {
                 this.redisTotal += entry.getValue();
+                this.redis.add(NameCount.of(entry.getKey(), entry.getValue()));
             }
+        }
+    }
+
+    @Setter
+    @Getter
+    public static class NameCount {
+        private String name;
+
+        private Long count;
+
+        public static NameCount of(String name, Long count) {
+            NameCount data = new NameCount();
+
+            data.setName(name);
+            data.setCount(count);
+
+            return data;
         }
     }
 }

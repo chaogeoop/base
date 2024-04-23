@@ -5,19 +5,35 @@ import io.github.chaogeoop.base.business.mongodb.basic.BaseModel;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class IoMonitorHolder {
-    private static final ThreadLocal<IoStatistic> ioMonitorHolder = new ThreadLocal<>();
+    private static final ThreadLocal<Map<String, IoStatistic>> ioMonitorHolder = new ThreadLocal<>();
 
     public static void init(String funcName) {
-        ioMonitorHolder.set(IoStatistic.of(funcName));
+        Map<String, IoStatistic> map = ioMonitorHolder.get();
+        if (map == null) {
+            map = new HashMap<>();
+            ioMonitorHolder.set(map);
+        }
+
+        if (map.containsKey(funcName)) {
+            return;
+        }
+
+        map.put(funcName, IoStatistic.of(funcName));
     }
 
     @Nullable
-    public static IoStatistic get() {
-        IoStatistic result = ioMonitorHolder.get();
+    public static IoStatistic get(String funcName) {
+        Map<String, IoStatistic> map = ioMonitorHolder.get();
+        if (map == null) {
+            return null;
+        }
+
+        IoStatistic result = map.get(funcName);
         if (result == null) {
             return null;
         }
@@ -37,53 +53,79 @@ public class IoMonitorHolder {
         return result;
     }
 
-    public static <M extends BaseModel> void incDatabase(String collectionName) {
+    public static void removeFunc(String funcName) {
+        Map<String, IoStatistic> map = ioMonitorHolder.get();
+        if (map == null) {
+            return;
+        }
+
+        map.remove(funcName);
+    }
+
+    public static void incDatabase(String collectionName) {
         incDatabase(collectionName, 1);
     }
 
-    public static <M extends BaseModel> void incDatabase(String collectionName, long times) {
-        IoStatistic result = ioMonitorHolder.get();
-        if (result == null) {
+    public static void incDatabase(String collectionName, long times) {
+        Map<String, IoStatistic> map = ioMonitorHolder.get();
+        if (map == null) {
             return;
         }
 
-        Long before = result.getDatabase().get(collectionName);
-        if (before == null) {
-            before = 0L;
-        }
+        for (Map.Entry<String, IoStatistic> entry : map.entrySet()) {
+            IoStatistic result = entry.getValue();
 
-        result.getDatabase().put(collectionName, before + times);
+            Long before = result.getDatabase().get(collectionName);
+            if (before == null) {
+                before = 0L;
+            }
+
+            result.getDatabase().put(collectionName, before + times);
+        }
     }
 
     public static void incCount(String collectionName) {
-        IoStatistic result = ioMonitorHolder.get();
-        if (result == null) {
+        Map<String, IoStatistic> map = ioMonitorHolder.get();
+        if (map == null) {
             return;
         }
 
-        Long before = result.getCount().get(collectionName);
-        if (before == null) {
-            before = 0L;
-        }
+        for (Map.Entry<String, IoStatistic> entry : map.entrySet()) {
+            IoStatistic result = entry.getValue();
 
-        result.getCount().put(collectionName, before + 1);
+            Long before = result.getCount().get(collectionName);
+            if (before == null) {
+                before = 0L;
+            }
+
+            result.getCount().put(collectionName, before + 1);
+        }
     }
 
     public static void incRedis(String funcName) {
-        IoStatistic result = ioMonitorHolder.get();
-        if (result == null) {
+        Map<String, IoStatistic> map = ioMonitorHolder.get();
+        if (map == null) {
             return;
         }
 
-        Long before = result.getRedis().get(funcName);
-        if (before == null) {
-            before = 0L;
-        }
+        for (Map.Entry<String, IoStatistic> entry : map.entrySet()) {
+            IoStatistic result = entry.getValue();
 
-        result.getRedis().put(funcName, before + 1);
+            Long before = result.getRedis().get(funcName);
+            if (before == null) {
+                before = 0L;
+            }
+
+            result.getRedis().put(funcName, before + 1);
+        }
     }
 
     public static void remove() {
+        Map<String, IoStatistic> map = ioMonitorHolder.get();
+        if (map != null && !map.isEmpty()) {
+            return;
+        }
+
         ioMonitorHolder.remove();
     }
 }
