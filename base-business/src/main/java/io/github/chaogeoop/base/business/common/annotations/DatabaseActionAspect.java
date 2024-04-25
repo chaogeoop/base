@@ -4,7 +4,6 @@ import io.github.chaogeoop.base.business.common.interfaces.IUserContext;
 import io.github.chaogeoop.base.business.common.enums.DatabaseActionEnum;
 import io.github.chaogeoop.base.business.mongodb.IPrimaryChooseStamp;
 import io.github.chaogeoop.base.business.threadlocals.PrimaryChooseHolder;
-import io.github.chaogeoop.base.business.common.errors.BizException;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.*;
 import org.aspectj.lang.reflect.MethodSignature;
@@ -36,6 +35,7 @@ public class DatabaseActionAspect {
         Method method = ((MethodSignature) jp.getSignature()).getMethod();
         Parameter[] parameters = method.getParameters();
         DatabaseAction annotation = method.getAnnotation(DatabaseAction.class);
+        String funcName = method.getDeclaringClass().getName() + "." + method.getName();
 
         if (DatabaseActionEnum.JUDGE_READ.equals(annotation.action())) {
             IUserContext userContext = getUserContext(parameters, args);
@@ -44,12 +44,16 @@ public class DatabaseActionAspect {
                 stamp = new Date().getTime() - Duration.ofSeconds(annotation.choosePrimarySeconds()).toMillis();
             }
 
-            PrimaryChooseHolder.init(stamp);
+            PrimaryChooseHolder.init(stamp, funcName);
+            return;
         }
 
         if (DatabaseActionEnum.SLAVER_READ.equals(annotation.action())) {
-            PrimaryChooseHolder.init(new Date().getTime() - Duration.ofSeconds(annotation.choosePrimarySeconds()).toMillis());
+            PrimaryChooseHolder.init(new Date().getTime() - Duration.ofSeconds(annotation.choosePrimarySeconds()).toMillis(), funcName);
+            return;
         }
+
+        PrimaryChooseHolder.init(new Date().getTime() + Duration.ofSeconds(annotation.choosePrimarySeconds()).toMillis(), funcName);
     }
 
     @After("pointCut()")
@@ -59,16 +63,17 @@ public class DatabaseActionAspect {
         Method method = ((MethodSignature) jp.getSignature()).getMethod();
         Parameter[] parameters = method.getParameters();
         DatabaseAction annotation = method.getAnnotation(DatabaseAction.class);
+        String funcName = method.getDeclaringClass().getName() + "." + method.getName();
 
         try {
             if (DatabaseActionEnum.WRITTEN_SOON_READ.equals(annotation.action())) {
                 IUserContext userContext = getUserContext(parameters, args);
                 this.handler.record(userContext, new Date().getTime() + Duration.ofSeconds(annotation.choosePrimarySeconds()).toMillis());
             }
-        } catch (Exception e) {
-            throw e;
+        } catch (Exception ignored) {
+
         } finally {
-            PrimaryChooseHolder.remove();
+            PrimaryChooseHolder.remove(funcName);
         }
     }
 
