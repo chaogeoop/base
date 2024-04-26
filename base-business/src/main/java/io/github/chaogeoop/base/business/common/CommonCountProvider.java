@@ -750,6 +750,7 @@ public class CommonCountProvider {
 
             Date changeDate = DateConverter.parseStringDate(this.commonCountDateLog.getDate(), DateConverter.DateFormatEnum.fullUntilDay);
             String changeMonth = DateConverter.dateToString(changeDate, DateConverter.DateFormatEnum.fullUntilMonth);
+            this.commonCountTotal.getChangeMonths().add(changeMonth);
 
             if (this.commonCountDateLog.getId() == null) {
                 persistEntity.getDatabase().insert(this.commonCountDateLog);
@@ -759,7 +760,6 @@ public class CommonCountProvider {
                 if (this.inc != 0) {
                     this.commonCountDateLog.setTotal(this.commonCountDateLog.getTotal() + this.inc);
                     this.commonCountTotal.setTotal(this.commonCountTotal.getTotal() + this.inc);
-                    this.commonCountTotal.getChangeMonths().add(changeMonth);
 
                     persistEntity.getDatabase().save(this.commonCountDateLog);
                     persistEntity.getDatabase().save(this.commonCountTotal);
@@ -782,9 +782,6 @@ public class CommonCountProvider {
             this.commonCountTotal.setLatestCacheDate(this.nextCacheDate);
             this.commonCountTotal.setTotal(this.commonCountTotal.getTotal() + this.beforeLatestCacheTotal);
             this.commonCountDateLog.setTotal(this.beforeLatestCacheTotal);
-            if (this.beforeLatestCacheTotal != 0) {
-                this.commonCountTotal.getChangeMonths().add(changeMonth);
-            }
 
             persistEntity.getDatabase().save(this.commonCountTotal);
             deleteRollbackMap.put(
