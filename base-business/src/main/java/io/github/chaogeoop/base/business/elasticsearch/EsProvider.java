@@ -213,16 +213,21 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
     private <M extends SyncLog> void syncToEs(M log) {
         String realEsName = BaseEsHelper.getAccordEsNameByData(this.jestClient, log.getBaseEsName(), log.getEsName(), log.getMapping());
 
-        if (ActionEnum.DELETE.equals(log.getAction())) {
-            SimpleSearchHelper.deleteData(this.jestClient, realEsName, log.getUniqueId());
-            return;
-        }
-
         KeyEntity<? extends KeyType> keyEntity = null;
         if (this.redisAbout.getEsDataCacheType() != null) {
             keyEntity = KeyEntity.of(this.redisAbout.getEsDataCacheType(), log.calTypeId());
+        }
 
-            if (EsProvider.ActionEnum.UPDATE.equals(log.getAction())) {
+        if (ActionEnum.DELETE.equals(log.getAction())) {
+            SimpleSearchHelper.deleteData(this.jestClient, realEsName, log.getUniqueId());
+            if (keyEntity != null) {
+                this.redisAbout.getStrictRedisProvider().delete(keyEntity);
+            }
+            return;
+        }
+
+        if (ActionEnum.UPDATE.equals(log.getAction())) {
+            if (keyEntity != null) {
                 String cacheStringData = this.redisAbout.getStrictRedisProvider().get(keyEntity, String.class);
                 if (cacheStringData != null && cacheStringData.equals(log.getData())) {
                     return;
@@ -231,7 +236,6 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
         }
 
         SimpleSearchHelper.insertOrUpdateData(this.jestClient, realEsName, log.getUniqueId(), log.getData());
-
         if (keyEntity != null) {
             this.redisAbout.getStrictRedisProvider().set(keyEntity, StrictRedisProvider.AcceptType.of(log.getData()), Duration.ofHours(1));
         }
