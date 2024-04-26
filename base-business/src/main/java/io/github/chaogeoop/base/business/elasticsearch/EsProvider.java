@@ -144,6 +144,20 @@ public class EsProvider implements MongoPersistEntity.AfterDbPersistInterface {
         persistMap.getMessages().add(message);
     }
 
+    public void syncDataToEs(Set<BaseModel> list) {
+        MongoPersistEntity.PersistEntity persistEntity = new MongoPersistEntity.PersistEntity();
+        persistEntity.getDatabase().save(list);
+
+        MongoPersistEntity entity = MongoPersistEntity.of(this.mongoTemplate, new ArrayList<>());
+        MongoPersistEntity.PersistMap persistMap = entity.convertToCollectionNameDatabaseMap(Lists.newArrayList(persistEntity));
+
+        this.handle(persistMap);
+
+        for (MongoPersistEntity.MessageInterface message : persistMap.getMessages()) {
+            message.send();
+        }
+    }
+
     public void syncToEs(List<EsNameId> messages) {
         if (messages.size() == 1) {
             this.syncToEs(messages.get(0));

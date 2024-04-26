@@ -26,7 +26,7 @@ public class MongoPersistEntity {
         this.afterDbPersistHandlers = afterDbPersistHandlers;
     }
 
-    protected static MongoPersistEntity of(MongoTemplate mongoTemplate, List<AfterDbPersistInterface> afterDbPersistHandlers) {
+    public static MongoPersistEntity of(MongoTemplate mongoTemplate, List<AfterDbPersistInterface> afterDbPersistHandlers) {
         return new MongoPersistEntity(mongoTemplate, afterDbPersistHandlers);
     }
 
@@ -66,7 +66,7 @@ public class MongoPersistEntity {
         }
     }
 
-    protected PersistMap convertToCollectionNameDatabaseMap(List<PersistEntity> list) {
+    public PersistMap convertToCollectionNameDatabaseMap(List<PersistEntity> list) {
         MultiValueMap<ModelClazzCollectionName, BaseModel> insertMap = new LinkedMultiValueMap<>();
         MultiValueMap<ModelClazzCollectionName, BaseModel> saveMap = new LinkedMultiValueMap<>();
         MultiValueMap<ModelClazzCollectionName, BaseModel> deleteMap = new LinkedMultiValueMap<>();
