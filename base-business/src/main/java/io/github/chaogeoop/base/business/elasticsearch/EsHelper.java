@@ -522,7 +522,7 @@ public class EsHelper {
             EsFieldInfo data = new EsFieldInfo();
 
             for (FieldNode node : this.tailTermNodes) {
-                Pair<String, List<String>> pair = node.getFiledNestedPathListPair();
+                Pair<String, List<String>> pair = node.getFieldNestedPathListPair();
                 String fieldName = pair.getLeft();
                 List<String> nestedPathList = pair.getRight();
 
@@ -535,7 +535,7 @@ public class EsHelper {
             }
 
             for (FieldNode node : this.tailTextNodes) {
-                Pair<String, List<String>> pair = node.getFiledNestedPathListPair();
+                Pair<String, List<String>> pair = node.getFieldNestedPathListPair();
                 String fieldName = pair.getLeft();
                 List<String> nestedPathList = pair.getRight();
 
@@ -680,7 +680,7 @@ public class EsHelper {
             return sonNode;
         }
 
-        public Pair<String, List<String>> getFiledNestedPathListPair() {
+        public Pair<String, List<String>> getFieldNestedPathListPair() {
             List<FieldNode> list = this.buildNodeChain();
 
             List<String> pathList = new ArrayList<>();
