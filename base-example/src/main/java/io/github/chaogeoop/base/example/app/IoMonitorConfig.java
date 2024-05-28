@@ -28,7 +28,6 @@ public class IoMonitorConfig {
     @Autowired
     private MongoTemplate mongoTemplate;
 
-
     @Bean
     public IoMonitorProvider ioMonitorProvider() {
         return new IoMonitorProvider(
