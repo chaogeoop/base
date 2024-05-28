@@ -25,4 +25,5 @@ public class WebConfig implements WebMvcConfigurer {
     public static class AppGlobalExceptionHandler extends GlobalExceptionHandler {
 
     }
+
 }
