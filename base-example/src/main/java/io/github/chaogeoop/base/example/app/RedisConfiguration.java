@@ -22,6 +22,7 @@ public class RedisConfiguration {
     @Value("${redis.password}")
     private String password;
 
+
     @Bean
     DistributedKeyProvider distributedKeyProvider() {
         return new DistributedKeyProvider("io.github.chaogeoop.base.example.app.keyregisters", "app");
