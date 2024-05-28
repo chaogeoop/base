@@ -16,6 +16,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.mongodb.core.MongoTemplate;
 
 @EnableMongoIoMonitor
+@EnableRedisIoMonitor
 @Configuration
 public class IoMonitorConfig {
     @Autowired
